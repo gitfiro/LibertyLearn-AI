@@ -1,0 +1,7 @@
+{
+  "name": "LibertyLearn AI",
+  "description": "A next-generation US Citizenship study companion featuring adaptive AI quizzes, real-time voice mock interviews using Gemini Live API, and personalized civics tutoring.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
