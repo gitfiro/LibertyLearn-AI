@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { searchAttorneys } from '../services/geminiService';
 
 interface AttorneyResult {
@@ -9,16 +9,36 @@ interface AttorneyResult {
   bodyLines: string[];
   isProBono: boolean;
   mapLink?: any;
+  isFeatured?: boolean;
 }
+
+const FEATURED_ATTORNEY: AttorneyResult = {
+  id: 99999,
+  title: "CK Legal PLLC",
+  ratingScore: 5.0,
+  ratingText: "5.0 stars (Top Rated)",
+  bodyLines: [
+    "Address: 3060 Williams Dr Suite 300, #3093, Fairfax, VA 22031", 
+    "Premier Immigration Counsel offering expert guidance for Citizenship, Green Cards, and Visas. Client-focused representation committed to your success."
+  ],
+  isProBono: false, 
+  mapLink: {
+    uri: "https://www.google.com/maps/search/?api=1&query=CK+Legal+PLLC+Fairfax+VA",
+    title: "CK Legal PLLC"
+  },
+  isFeatured: true
+};
 
 const FindAttorney: React.FC = () => {
   const [formData, setFormData] = useState({
-    city: '',
-    state: '',
+    city: 'Fairfax',
+    state: 'Virginia',
     zip: '',
-    county: ''
+    language: '',
+    caseType: ''
   });
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Searching database...');
   
   // Results State
   const [parsedResults, setParsedResults] = useState<AttorneyResult[]>([]);
@@ -29,6 +49,24 @@ const FindAttorney: React.FC = () => {
   // Filter & Sort State
   const [sortBy, setSortBy] = useState<'default' | 'rating'>('default');
   const [showProBonoOnly, setShowProBonoOnly] = useState(false);
+
+  // Dynamic loading messages
+  useEffect(() => {
+    if (!loading) return;
+    const messages = [
+        "Connecting to legal database...",
+        "Locating top-rated attorneys...",
+        "Analyzing reviews and specialties...",
+        "Verifying locations...",
+        "Compiling your results..."
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+        setLoadingMessage(messages[i % messages.length]);
+        i++;
+    }, 800);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,16 +82,18 @@ const FindAttorney: React.FC = () => {
     setSortBy('default');
     setShowProBonoOnly(false);
 
-    // Updated query to explicitly ask for pro-bono/cost info
-    const query = `Find top rated immigration attorneys and law firms in ${formData.city} ${formData.county ? formData.county + ' County' : ''}, ${formData.state} ${formData.zip}. 
-    Provide the results as a strictly numbered list (e.g., "1. Name"). 
-    For each firm, provide the following details on separate lines:
+    // Constructed optimized prompt
+    const location = `${formData.city}, ${formData.state} ${formData.zip}`;
+    const languageReq = formData.language ? ` who speak ${formData.language}` : '';
+    const practiceReq = formData.caseType ? ` specializing in ${formData.caseType}` : '';
+    
+    const query = `Find 5 top rated immigration attorneys or firms in ${location}${languageReq}${practiceReq}.
+    Format as a strictly numbered list (1., 2., etc).
+    For each, provide exactly these lines:
     - Name
     - Address
-    - Rating (e.g., "Rating: 4.8 stars (150 reviews)")
-    - Summary: A brief 1-sentence summary. Explicitly mention if they offer 'pro bono', 'sliding scale', 'legal aid', or 'free consultation'.
-    
-    Do not include a long introduction or conclusion.`;
+    - Rating (e.g. "4.8 stars")
+    - Summary: 1 sentence mentioning key services${formData.language ? `, languages` : ''} and if they offer 'pro bono' or 'free consults'.`;
 
     try {
       const response = await searchAttorneys(query);
@@ -78,15 +118,45 @@ const FindAttorney: React.FC = () => {
   };
 
   const parseResults = (text: string, links: any[]) => {
-      // Split text by numbered list items (e.g., "1. ", "2. ")
-      const rawItems = text.split(/\n(?=\d+\.)/g);
-      // Filter out items that don't start with a number (unless it's a single unformatted block)
-      const items = rawItems.filter(item => item.match(/^\d+\./));
+      // Robust split: handles "1. ", "2. " OR bullet points if the model deviates
+      const rawItems = text.split(/\n(?=\d+\.|[\*•-]\s)/g);
+      
+      // Filter items to ensure they look like entries
+      const items = rawItems.filter(item => {
+          const trimmed = item.trim();
+          if (trimmed.length < 10) return false;
+          
+          const lower = trimmed.toLowerCase();
+
+          // Explicitly filter out conversational intros and known problematic phrases
+          // This prevents the "Here are 5 top rated..." header from becoming a card
+          if (/^(here (is|are)|sure|below|these|i found|based on|results|finding)/i.test(trimmed)) return false;
+          if (trimmed.endsWith(':')) return false; // Intro lines often end in a colon
+          if (lower.includes('here are 5 top-rated')) return false;
+          if (lower.includes('immigration attorneys or firms')) return false;
+          
+          // Strict requirement: Must contain at least one of these to be considered a valid entry
+          if (!lower.includes('address') && !lower.includes('rating')) return false;
+
+          const startsWithMarker = /^(\d+\.|[\*•-])/.test(trimmed);
+          const hasAddress = /address:/i.test(trimmed);
+          const hasRating = /rating:|stars/i.test(trimmed);
+          
+          // Enforce stricter validation: 
+          // A valid entry must have an Address OR (be a list item AND have a rating)
+          return hasAddress || (startsWithMarker && hasRating);
+      });
 
       const parsed: AttorneyResult[] = items.map((item, idx) => {
           const lines = item.split('\n').filter(l => l.trim());
-          // Extract Title (remove number and markdown)
-          const title = lines[0].replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').trim();
+          
+          // Clean Title: Remove numbering (1., 2.) or bullets (*, -), markdown, and "Name:" labels
+          const titleLine = lines[0] || "Unknown Firm";
+          const title = titleLine
+            .replace(/^(\d+\.|[\*•-])\s*/, '')
+            .replace(/\*\*/g, '')
+            .replace(/^[-*•\s]*(Name|Firm Name|Attorney|Law Firm)\s*[:\-]\s*/i, '')
+            .trim();
           
           // Find Rating Line
           const ratingLine = lines.find(l => l.toLowerCase().includes('rating') || l.toLowerCase().includes('stars'));
@@ -105,12 +175,17 @@ const FindAttorney: React.FC = () => {
                             contentLower.includes('legal aid') ||
                             contentLower.includes('non-profit');
 
-          // Filter other lines
-          const bodyLines = lines.slice(1).filter(l => l !== ratingLine);
+          // Filter body lines
+          const bodyLines = lines.slice(1)
+            .filter(l => l !== ratingLine)
+            .map(l => l.replace(/^[-*•]?\s*(Summary|Description|About):\s*/i, '').trim());
 
           // Try to match with a Google Map link
           const mapLink = links.find(m => 
-            m.title && (title.toLowerCase().includes(m.title.toLowerCase()) || m.title.toLowerCase().includes(title.toLowerCase()))
+            m.title && (
+                title.toLowerCase().includes(m.title.toLowerCase()) || 
+                m.title.toLowerCase().includes(title.toLowerCase())
+            )
           );
 
           return {
@@ -124,37 +199,58 @@ const FindAttorney: React.FC = () => {
           };
       });
 
-      setParsedResults(parsed);
+      // Remove duplicates of CK Legal if found in API results
+      const filteredParsed = parsed.filter(p => !p.title.toLowerCase().includes("ck legal"));
+      
+      // Featured logic (Northern Virginia)
+      const { city, state, zip } = formData;
+      const normCity = city.toLowerCase().trim();
+      const normState = state.toLowerCase().trim();
+      const normZip = zip.trim();
+
+      const isVirginia = normState === '' || normState.includes('va') || normState.includes('virginia');
+      const novaCities = [
+        'arlington', 'alexandria', 'fairfax', 'falls church', 'manassas', 'mclean', 
+        'reston', 'tysons', 'vienna', 'herndon', 'leesburg', 'ashburn', 'woodbridge', 
+        'sterling', 'annandale', 'burke', 'centreville', 'chantilly', 'springfield', 'lorton', 
+        'northern virginia', 'nova'
+      ];
+      
+      const isNovaZip = normZip.length >= 3 && (
+          normZip.startsWith('201') || 
+          ['220','221','222','223'].some(z => normZip.startsWith(z))
+      );
+
+      const isNovaLoc = novaCities.some(c => normCity.includes(c)) || isNovaZip;
+
+      const shouldShowFeatured = isVirginia && isNovaLoc;
+      
+      if (shouldShowFeatured) {
+          setParsedResults([FEATURED_ATTORNEY, ...filteredParsed]);
+      } else {
+          setParsedResults(filteredParsed);
+      }
   };
 
-  // Helper to render star icons
-  const renderStars = (ratingText: string) => {
-    const match = ratingText.match(/(\d+(\.\d)?)/);
-    const score = match ? parseFloat(match[0]) : 0;
+  const renderStars = (score: number) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       if (i <= score) {
-        stars.push(<i key={i} className="fas fa-star text-yellow-400"></i>);
+        stars.push(<i key={i} className="fas fa-star text-yellow-400 text-sm"></i>);
       } else if (i - 0.5 <= score) {
-        stars.push(<i key={i} className="fas fa-star-half-alt text-yellow-400"></i>);
+        stars.push(<i key={i} className="fas fa-star-half-alt text-yellow-400 text-sm"></i>);
       } else {
-        stars.push(<i key={i} className="far fa-star text-gray-300"></i>);
+        stars.push(<i key={i} className="far fa-star text-gray-300 text-sm"></i>);
       }
     }
-    return (
-      <div className="flex items-center gap-2">
-        <div className="flex text-sm">{stars}</div>
-        <span className="text-sm font-bold text-gray-700">{score > 0 ? score : ''}</span>
-      </div>
-    );
+    return <div className="flex gap-0.5">{stars}</div>;
   };
 
   const renderResults = () => {
     if (parsedResults.length === 0) {
-       // Fallback to raw text if parsing failed but we have text
        if (rawResultText) {
            return (
-              <div className="bg-white p-6 rounded-xl shadow border border-gray-200 prose text-gray-700">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-700 prose dark:prose-invert max-w-none transition-colors">
                  <div className="whitespace-pre-wrap">{rawResultText}</div>
               </div>
            );
@@ -163,27 +259,33 @@ const FindAttorney: React.FC = () => {
     }
 
     let displayResults = [...parsedResults];
+    const featured = displayResults.find(r => r.isFeatured);
+    const others = displayResults.filter(r => !r.isFeatured);
+    let filteredOthers = others;
 
-    // Filter
     if (showProBonoOnly) {
-        displayResults = displayResults.filter(r => r.isProBono);
+        filteredOthers = filteredOthers.filter(r => r.isProBono);
     }
-
-    // Sort
     if (sortBy === 'rating') {
-        displayResults.sort((a, b) => b.ratingScore - a.ratingScore);
+        filteredOthers.sort((a, b) => b.ratingScore - a.ratingScore);
     }
+    
+    let finalResults: AttorneyResult[] = [];
+    if (featured && (!showProBonoOnly || featured.isProBono)) {
+        finalResults.push(featured);
+    }
+    finalResults = [...finalResults, ...filteredOthers];
 
-    if (displayResults.length === 0) {
+    if (finalResults.length === 0) {
         return (
-            <div className="bg-white p-10 rounded-xl shadow text-center border border-gray-200">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-white dark:bg-gray-800 p-10 rounded-xl shadow text-center border border-gray-200 dark:border-gray-700">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i className="fas fa-filter text-gray-400 text-2xl"></i>
                 </div>
-                <h3 className="text-lg font-bold text-gray-600">No results match your filters.</h3>
+                <h3 className="text-lg font-bold text-gray-600 dark:text-gray-300">No results match your filters.</h3>
                 <button 
                     onClick={() => {setShowProBonoOnly(false); setSortBy('default');}}
-                    className="mt-4 text-patriot-blue font-semibold hover:underline"
+                    className="mt-4 text-patriot-blue dark:text-blue-400 font-semibold hover:underline"
                 >
                     Clear filters
                 </button>
@@ -192,49 +294,70 @@ const FindAttorney: React.FC = () => {
     }
 
     return (
-      <div className="space-y-4">
-        {displayResults.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all animate-fade-in relative">
-              {item.isProBono && (
-                  <span className="absolute top-0 right-0 bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
-                      <i className="fas fa-check-circle mr-1"></i> Pro Bono / Accessible
-                  </span>
-              )}
+      <div className="space-y-6">
+        {finalResults.map((item) => (
+            <div 
+              key={item.id} 
+              className={`p-6 rounded-xl shadow-sm transition-all animate-fade-in relative ${
+                item.isFeatured 
+                  ? 'bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-blue-900/20 border-2 border-patriot-blue/30 dark:border-blue-500/30 ring-4 ring-blue-50/50 dark:ring-blue-900/10' 
+                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md'
+              }`}
+            >
+              <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+                 {item.isFeatured && (
+                    <span className="bg-patriot-blue text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider shadow-sm">
+                        Featured
+                    </span>
+                 )}
+                 {item.isProBono && (
+                    <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-bold px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+                        <i className="fas fa-hand-holding-heart"></i> Pro Bono
+                    </span>
+                 )}
+              </div>
               
-              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-2">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-3 pr-24">
                 <div className="flex-1">
-                   <h3 className="text-xl font-bold text-patriot-blue mb-1">{item.title}</h3>
-                   {item.ratingText && (
-                     <div className="mb-2">
-                        {renderStars(item.ratingText)}
-                        <span className="text-xs text-gray-500">{item.ratingText.replace(/rating:?/i, '').replace(/\*\*/g, '').trim()}</span>
-                     </div>
-                   )}
+                   <h3 className={`text-xl font-bold mb-1 ${item.isFeatured ? 'text-patriot-blue dark:text-blue-300 text-2xl' : 'text-gray-800 dark:text-white'}`}>
+                     {item.title}
+                   </h3>
+                   
+                   <div className="flex items-center gap-3 mb-2">
+                      <div className="bg-gray-900 dark:bg-black text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                         <span>{item.ratingScore > 0 ? item.ratingScore.toFixed(1) : 'N/A'}</span>
+                         <i className="fas fa-star text-yellow-400 text-[10px]"></i>
+                      </div>
+                      {renderStars(item.ratingScore)}
+                   </div>
                 </div>
-                {item.mapLink && (
-                   <a 
-                     href={item.mapLink.uri} 
-                     target="_blank" 
-                     rel="noopener noreferrer"
-                     className="flex-shrink-0 bg-blue-50 text-patriot-blue hover:bg-blue-100 px-3 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-                   >
-                     <i className="fas fa-map-marker-alt text-patriot-red"></i> View Map
-                   </a>
-                )}
               </div>
               
-              <div className="text-gray-600 text-sm space-y-1 mt-2">
-                 {item.bodyLines.map((line, lIdx) => {
-                    const parts = line.split('**');
-                    return (
-                        <p key={lIdx} className="leading-relaxed">
-                            {parts.map((part, pIdx) => 
-                                pIdx % 2 === 1 ? <span key={pIdx} className="font-bold text-gray-800">{part}</span> : part
-                            )}
-                        </p>
-                    );
-                 })}
+              <div className="text-gray-600 dark:text-gray-300 text-sm space-y-2 mt-3">
+                 {item.bodyLines.map((line, lIdx) => (
+                    <p key={lIdx} className={`leading-relaxed ${line.toLowerCase().includes('address') ? 'flex items-start gap-2 text-gray-500 dark:text-gray-400' : ''}`}>
+                        {line.toLowerCase().includes('address') && <i className="fas fa-map-marker-alt mt-1 text-gray-400 dark:text-gray-500"></i>}
+                        {line}
+                    </p>
+                 ))}
               </div>
+
+              {item.mapLink && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-start">
+                     <a 
+                       href={item.mapLink.uri} 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 ${
+                           item.isFeatured 
+                           ? 'bg-patriot-red text-white hover:bg-red-700 shadow-md' 
+                           : 'bg-blue-50 dark:bg-blue-900/20 text-patriot-blue dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'
+                       }`}
+                     >
+                       <i className="fas fa-map-marked-alt"></i> Get Directions
+                     </a>
+                  </div>
+              )}
             </div>
         ))}
       </div>
@@ -243,61 +366,91 @@ const FindAttorney: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden mb-8">
-        <div className="bg-patriot-blue p-6 sm:p-8 text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">Find Immigration Legal Help</h1>
-          <p className="text-blue-200 max-w-2xl mx-auto">
-            Search for qualified immigration attorneys and non-profit legal aid organizations in your area.
-          </p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden mb-8 transition-colors">
+        <div className="bg-patriot-blue p-6 sm:p-8 text-center relative">
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10">
+              <i className="fas fa-balance-scale text-[300px] text-white absolute -top-10 -left-20"></i>
+          </div>
+          <div className="relative z-10">
+            <h1 className="text-3xl font-bold text-white mb-2">Find Immigration Legal Help</h1>
+            <p className="text-blue-200 max-w-2xl mx-auto">
+                Search for qualified immigration attorneys and non-profit legal aid organizations in your area.
+            </p>
+          </div>
         </div>
 
         <div className="p-6 sm:p-8">
           <form onSubmit={handleSearch} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-gray-700 font-bold mb-2">City</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">City</label>
                 <input
                   type="text"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-patriot-blue focus:border-transparent"
-                  placeholder="e.g. Miami"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="e.g. Fairfax"
                   value={formData.city}
                   onChange={(e) => setFormData({...formData, city: e.target.value})}
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-bold mb-2">State</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">State</label>
                 <input
                   type="text"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-patriot-blue focus:border-transparent"
-                  placeholder="e.g. Florida"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="e.g. Virginia"
                   value={formData.state}
                   onChange={(e) => setFormData({...formData, state: e.target.value})}
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-bold mb-2">Zip Code</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Zip Code</label>
                 <input
                   type="text"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-patriot-blue focus:border-transparent"
-                  placeholder="e.g. 33101"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
+                  placeholder="e.g. 22031"
                   value={formData.zip}
                   onChange={(e) => setFormData({...formData, zip: e.target.value})}
                 />
               </div>
+              
+              {/* Advanced Filters */}
               <div>
-                <label className="block text-gray-700 font-bold mb-2">County (Optional)</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-patriot-blue focus:border-transparent"
-                  placeholder="e.g. Miami-Dade"
-                  value={formData.county}
-                  onChange={(e) => setFormData({...formData, county: e.target.value})}
-                />
+                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Language Preference</label>
+                <div className="relative">
+                    <i className="fas fa-language absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500"></i>
+                    <input
+                    type="text"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
+                    placeholder="e.g. Spanish, Creole"
+                    value={formData.language}
+                    onChange={(e) => setFormData({...formData, language: e.target.value})}
+                    />
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Case Type / Need</label>
+                <div className="relative">
+                    <i className="fas fa-folder-open absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500"></i>
+                    <select
+                        className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent appearance-none"
+                        value={formData.caseType}
+                        onChange={(e) => setFormData({...formData, caseType: e.target.value})}
+                    >
+                        <option value="">Any / General</option>
+                        <option value="Citizenship & Naturalization">Citizenship & Naturalization</option>
+                        <option value="Green Card / Adjustment of Status">Green Card / Adjustment</option>
+                        <option value="Deportation Defense">Deportation Defense</option>
+                        <option value="Asylum">Asylum</option>
+                        <option value="Family Visa">Family Visa</option>
+                        <option value="Employment Visa">Employment Visa</option>
+                    </select>
+                    <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-xs"></i>
+                </div>
               </div>
             </div>
 
             {error && (
-                <div className="bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 text-sm">
+                <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg border border-red-200 dark:border-red-800 text-sm">
                     <i className="fas fa-exclamation-circle mr-2"></i> {error}
                 </div>
             )}
@@ -306,12 +459,12 @@ const FindAttorney: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-patriot-red hover:bg-red-700 text-white px-10 py-3 rounded-full font-bold text-lg shadow-lg transition-transform transform hover:scale-105 flex items-center gap-2 disabled:opacity-70"
+                className="bg-patriot-red hover:bg-red-700 text-white px-10 py-3 rounded-full font-bold text-lg shadow-lg transition-transform transform hover:scale-105 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <><i className="fas fa-circle-notch fa-spin"></i> Searching...</>
+                  <><i className="fas fa-circle-notch fa-spin"></i> {loadingMessage}</>
                 ) : (
-                  <><i className="fas fa-search"></i> Find Attorneys</>
+                  <><i className="fas fa-search"></i> Search</>
                 )}
               </button>
             </div>
@@ -325,33 +478,33 @@ const FindAttorney: React.FC = () => {
             {/* Main Results List */}
             <div className="lg:col-span-2">
                  <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <i className="fas fa-list-ul text-patriot-blue"></i> Search Results
+                     <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i className="fas fa-list-ul text-patriot-blue dark:text-blue-300"></i> Search Results
                      </h2>
                      
                      {/* Filter & Sort Controls */}
                      {parsedResults.length > 0 && (
                         <div className="flex flex-wrap items-center gap-3 text-sm">
-                            <label className="flex items-center bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:bg-gray-50">
+                            <label className="flex items-center bg-white dark:bg-gray-700 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                                 <input 
                                     type="checkbox" 
                                     checked={showProBonoOnly}
                                     onChange={(e) => setShowProBonoOnly(e.target.checked)}
                                     className="mr-2 text-patriot-blue focus:ring-patriot-blue rounded"
                                 />
-                                <span className="text-gray-700 font-medium">Pro Bono / Low Cost</span>
+                                <span className="text-gray-700 dark:text-gray-200 font-medium">Pro Bono / Low Cost</span>
                             </label>
 
                             <div className="relative">
                                 <select 
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value as 'default' | 'rating')}
-                                    className="appearance-none bg-white pl-3 pr-8 py-2 rounded-lg border border-gray-200 shadow-sm text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-patriot-blue"
+                                    className="appearance-none bg-white dark:bg-gray-700 pl-3 pr-8 py-2 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-patriot-blue"
                                 >
                                     <option value="default">Default Sort</option>
                                     <option value="rating">Highest Rated</option>
                                 </select>
-                                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-xs"></i>
                             </div>
                         </div>
                      )}
@@ -362,13 +515,13 @@ const FindAttorney: React.FC = () => {
 
             {/* Verified Locations Sidebar */}
             <div className="lg:col-span-1">
-                <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 sticky top-24">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <i className="fas fa-map-marked-alt text-patriot-red"></i> Verified Locations
+                <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 sticky top-24 transition-colors">
+                    <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                        <i className="fas fa-map-marked-alt text-patriot-red dark:text-red-400"></i> Verified Locations
                     </h3>
                     
                     {mapLinks.length === 0 ? (
-                        <p className="text-gray-500 text-sm italic">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm italic">
                            Map data is loading or not available for these results. Please check the text details.
                         </p>
                     ) : (
@@ -379,22 +532,22 @@ const FindAttorney: React.FC = () => {
                                     href={place.uri} 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="block bg-white p-3 rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-patriot-blue transition-all group"
+                                    className="block bg-white dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md hover:border-patriot-blue dark:hover:border-blue-400 transition-all group"
                                 >
                                     <div className="flex justify-between items-start">
                                         <div className="overflow-hidden">
-                                            <h4 className="font-bold text-patriot-blue group-hover:text-blue-600 text-sm truncate">{place.title}</h4>
+                                            <h4 className="font-bold text-patriot-blue dark:text-blue-300 group-hover:text-blue-600 dark:group-hover:text-blue-200 text-sm truncate">{place.title}</h4>
                                             <div className="flex items-center mt-1">
-                                                <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wide">Google Maps</span>
+                                                <span className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded uppercase tracking-wide">Google Maps</span>
                                             </div>
                                         </div>
-                                        <i className="fas fa-external-link-alt text-xs text-gray-400 group-hover:text-patriot-blue mt-1"></i>
+                                        <i className="fas fa-external-link-alt text-xs text-gray-400 dark:text-gray-500 group-hover:text-patriot-blue dark:group-hover:text-blue-300 mt-1"></i>
                                     </div>
                                 </a>
                             ))}
                         </div>
                     )}
-                    <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 leading-tight">
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 leading-tight">
                         <i className="fas fa-info-circle mr-1"></i>
                         Location data provided by Google Maps. Ratings and reviews are based on available public information.
                     </div>

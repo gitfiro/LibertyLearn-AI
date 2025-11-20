@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { getAIInstance } from '../services/geminiService';
@@ -59,6 +60,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
   const [isConnected, setIsConnected] = useState(false);
   const [status, setStatus] = useState('Ready to start');
   const [volumeLevel, setVolumeLevel] = useState(0);
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   
   // Refs for audio context and session management
   const aiRef = useRef(getAIInstance());
@@ -214,6 +216,11 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
     }
   };
 
+  const confirmEndSession = () => {
+    stopInterview();
+    setShowEndConfirmation(false);
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -243,7 +250,39 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-4xl mx-auto p-4 sm:p-8 bg-patriot-cream rounded-xl shadow-inner border border-gray-200">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-4xl mx-auto p-4 sm:p-8 bg-patriot-cream rounded-xl shadow-inner border border-gray-200 relative">
+      
+      {/* End Confirmation Modal */}
+      {showEndConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-sm w-full p-6 transform transition-all scale-100">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fas fa-exclamation-triangle text-2xl text-red-500 dark:text-red-400"></i>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">End Interview Session?</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-sm">
+                Are you sure you want to end the current practice session? This will disconnect the AI officer.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowEndConfirmation(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmEndSession}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+              >
+                End Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 sm:mb-10 text-center w-full">
         <div className="w-20 h-20 sm:w-32 sm:h-32 bg-patriot-blue rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-blue-100">
           <i className={`fas fa-microphone-alt text-3xl sm:text-5xl transition-all duration-300 ${isConnected ? 'text-red-400 animate-pulse scale-110' : 'text-white'}`}></i>
@@ -280,7 +319,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
           </button>
         ) : (
           <button
-            onClick={stopInterview}
+            onClick={() => setShowEndConfirmation(true)}
             className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3"
           >
             <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
@@ -300,3 +339,4 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
 };
 
 export default LiveInterview;
+    

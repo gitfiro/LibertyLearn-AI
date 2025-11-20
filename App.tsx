@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { View, UserStats, UserProfile } from './types';
 import Dashboard from './components/Dashboard';
@@ -6,13 +7,16 @@ import LiveInterview from './components/LiveInterview';
 import FindAttorney from './components/FindAttorney';
 import PaymentPage from './components/PaymentPage';
 import InfoPage from './components/InfoPage';
-import Resources from './components/Resources';
 import LoginPage from './components/LoginPage';
+import LandingPage from './components/LandingPage';
+import ChatTutor from './components/ChatTutor';
+import NewsPage from './components/NewsPage';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>(View.LOGIN);
+  const [currentView, setCurrentView] = useState<View>(View.LANDING);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   
   const [user, setUser] = useState<UserProfile | null>(null);
   
@@ -26,6 +30,7 @@ const App: React.FC = () => {
       'Integrated Civics': 0,
       'Civic Duties': 0
     },
+    performanceByTopic: {}, // Initialize performance tracking
     isPremium: false,
     questionsInWindow: 0,
     windowStartTime: Date.now()
@@ -33,9 +38,35 @@ const App: React.FC = () => {
 
   const [userStats, setUserStats] = useState<UserStats>(defaultStats);
 
+  // Initialize Dark Mode
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setDarkMode(true);
+      document.documentElement.classList.add('dark');
+    } else {
+      setDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const newMode = !prev;
+      if (newMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+      return newMode;
+    });
+  };
+
   // Load user from local storage on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('libertyLearnUser');
+    const storedUser = localStorage.getItem('citizenAchieverUser');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
       setCurrentView(View.DASHBOARD);
@@ -45,7 +76,7 @@ const App: React.FC = () => {
   // Load Stats specific to the User ID whenever user changes
   useEffect(() => {
     if (user) {
-      const storageKey = `libertyLearn_stats_${user.id}`;
+      const storageKey = `citizenAchiever_stats_${user.id}`;
       const savedStats = localStorage.getItem(storageKey);
       if (savedStats) {
         setUserStats(JSON.parse(savedStats));
@@ -62,34 +93,61 @@ const App: React.FC = () => {
   // Persist stats whenever they change, if a user is logged in
   useEffect(() => {
     if (user && user.id) {
-      const storageKey = `libertyLearn_stats_${user.id}`;
+      const storageKey = `citizenAchiever_stats_${user.id}`;
       localStorage.setItem(storageKey, JSON.stringify(userStats));
     }
   }, [userStats, user]);
 
   const handleLogin = (loggedInUser: UserProfile) => {
     setUser(loggedInUser);
-    localStorage.setItem('libertyLearnUser', JSON.stringify(loggedInUser));
+    localStorage.setItem('citizenAchieverUser', JSON.stringify(loggedInUser));
     setCurrentView(View.DASHBOARD);
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('libertyLearnUser');
+    localStorage.removeItem('citizenAchieverUser');
     // Stats will reset to default via the useEffect when user becomes null, but we manually clear to be safe for UI
     setUserStats(defaultStats);
-    setCurrentView(View.LOGIN);
+    setCurrentView(View.LANDING);
     setIsProfileMenuOpen(false);
   };
 
-  const handleQuizComplete = (score: number, total: number) => {
-    setUserStats(prev => ({
-      ...prev,
-      quizzesTaken: prev.quizzesTaken + 1,
-      totalCorrect: prev.totalCorrect + score,
-      totalQuestions: prev.totalQuestions + total,
-      questionsInWindow: prev.questionsInWindow + total
-    }));
+  const handleQuizComplete = (
+    score: number, 
+    total: number,
+    breakdown: Record<string, { correct: number; total: number }> = {}
+  ) => {
+    setUserStats(prev => {
+      // Get current detailed stats or initialize
+      const currentPerf = prev.performanceByTopic || {};
+      const newPerf = { ...currentPerf };
+      const newMastery = { ...prev.masteryByTopic };
+
+      // Update stats for each category present in this quiz
+      Object.entries(breakdown).forEach(([category, stats]) => {
+        if (!newPerf[category]) {
+             newPerf[category] = { correct: 0, total: 0 };
+        }
+        newPerf[category].correct += stats.correct;
+        newPerf[category].total += stats.total;
+        
+        // Recalculate percentage mastery
+        if (newPerf[category].total > 0) {
+            newMastery[category] = Math.round((newPerf[category].correct / newPerf[category].total) * 100);
+        }
+      });
+
+      return {
+        ...prev,
+        quizzesTaken: prev.quizzesTaken + 1,
+        totalCorrect: prev.totalCorrect + score,
+        totalQuestions: prev.totalQuestions + total,
+        questionsInWindow: prev.questionsInWindow + total,
+        masteryByTopic: newMastery,
+        performanceByTopic: newPerf
+      };
+    });
     setTimeout(() => setCurrentView(View.DASHBOARD), 2000);
   };
 
@@ -120,9 +178,13 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  // If current view is LOGIN, render just the login page (no layout)
+  // Standalone Views (No Main Layout)
   if (currentView === View.LOGIN) {
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={handleLogin} onNavigate={handleNavigate} />;
+  }
+
+  if (currentView === View.LANDING) {
+    return <LandingPage onNavigate={handleNavigate} />;
   }
 
   const renderContent = () => {
@@ -153,13 +215,20 @@ const App: React.FC = () => {
             onUpgrade={handleUpgrade}
           />
         );
+      case View.AI_TUTOR:
+        return (
+          <ChatTutor 
+            isPremium={userStats.isPremium}
+            onUpgrade={handleUpgrade}
+          />
+        );
       case View.FIND_ATTORNEY:
         return (
           <FindAttorney />
         );
-      case View.RESOURCES:
+      case View.NEWS:
         return (
-          <Resources />
+          <NewsPage />
         );
       case View.PAYMENT:
         return (
@@ -188,22 +257,22 @@ const App: React.FC = () => {
       onClick={() => handleNavigate(view)}
       className={`flex items-center space-x-2 w-full md:w-auto px-3 py-2 rounded-md transition ${
         currentView === view 
-          ? 'bg-blue-50 text-patriot-blue font-bold' 
-          : 'text-gray-600 hover:bg-gray-50 hover:text-patriot-blue'
+          ? 'bg-blue-50 dark:bg-blue-900/30 text-patriot-blue dark:text-blue-300 font-bold' 
+          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-patriot-blue dark:hover:text-blue-300'
       }`}
     >
       <i className={`fas ${icon} w-5 text-center`}></i>
       <span>{label}</span>
       {isPremiumFeature && !userStats.isPremium && (
-        <i className="fas fa-lock text-xs text-gray-400 ml-1"></i>
+        <i className="fas fa-lock text-xs text-gray-400 dark:text-gray-500 ml-1"></i>
       )}
     </button>
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 font-sans text-patriot-slate">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 font-sans text-patriot-slate dark:text-gray-100 transition-colors duration-200">
       {/* Navigation Bar */}
-      <nav className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-200">
+      <nav className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             {/* Logo */}
@@ -212,8 +281,8 @@ const App: React.FC = () => {
                  <i className="fas fa-star"></i>
                </div>
                <div className="flex flex-col">
-                 <span className="font-bold text-xl leading-none tracking-tight text-patriot-blue">Liberty<span className="text-patriot-red">Learn</span></span>
-                 <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">
+                 <span className="font-bold text-xl leading-none tracking-tight text-patriot-blue dark:text-white">Citizen <span className="text-patriot-red">Achiever</span></span>
+                 <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-semibold">
                    {userStats.isPremium ? 'Premium' : 'Free Edition'}
                  </span>
                </div>
@@ -223,11 +292,20 @@ const App: React.FC = () => {
             <div className="hidden md:flex items-center space-x-1">
                <NavLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
                <NavLink view={View.QUIZ} label="Quiz" icon="fa-pen-alt" />
+               <NavLink view={View.AI_TUTOR} label="AI Tutor" icon="fa-robot" isPremiumFeature={true} />
                <NavLink view={View.LIVE_INTERVIEW} label="Interview" icon="fa-microphone-alt" isPremiumFeature={true} />
-               <NavLink view={View.RESOURCES} label="Resources" icon="fa-book" />
+               <NavLink view={View.NEWS} label="News" icon="fa-newspaper" />
                
-               {/* User Profile Dropdown or Upgrade Button */}
-               <div className="ml-4 flex items-center gap-3 border-l border-gray-200 pl-4">
+               <div className="ml-4 flex items-center gap-3 border-l border-gray-200 dark:border-gray-700 pl-4">
+                  {/* Dark Mode Toggle */}
+                  <button
+                    onClick={toggleDarkMode}
+                    className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-400 flex items-center justify-center transition-colors hover:bg-gray-200 dark:hover:bg-gray-600"
+                    title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                  >
+                    <i className={`fas ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+                  </button>
+
                   {!userStats.isPremium && (
                     <button 
                       onClick={handleUpgrade}
@@ -247,26 +325,26 @@ const App: React.FC = () => {
                         <img 
                           src={user.photoUrl} 
                           alt={user.name} 
-                          className="w-8 h-8 rounded-full border-2 border-gray-200"
+                          className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-gray-600"
                         />
-                        <span className="text-sm font-medium text-gray-700 max-w-[100px] truncate hidden lg:block">{user.name}</span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[100px] truncate hidden lg:block">{user.name}</span>
                         <i className="fas fa-chevron-down text-gray-400 text-xs"></i>
                       </button>
 
                       {isProfileMenuOpen && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 animate-fade-in z-50">
-                           <div className="px-4 py-3 border-b border-gray-100">
-                              <p className="text-sm font-bold text-gray-800 truncate">{user.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-1 animate-fade-in z-50">
+                           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                              <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                            </div>
-                           <button onClick={handleUpgrade} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                           <button onClick={handleUpgrade} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                               Billing Settings
                            </button>
-                           <button onClick={() => handleNavigate(View.SUPPORT)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                           <button onClick={() => handleNavigate(View.SUPPORT)} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                               Help & Support
                            </button>
-                           <div className="border-t border-gray-100 mt-1">
-                             <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium">
+                           <div className="border-t border-gray-100 dark:border-gray-700 mt-1">
+                             <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium">
                                 Sign Out
                              </button>
                            </div>
@@ -275,8 +353,8 @@ const App: React.FC = () => {
                     </div>
                   ) : (
                     <button 
-                      onClick={() => handleLogout()} // Actually goes to Login view
-                      className="text-sm font-bold text-patriot-blue hover:underline"
+                      onClick={() => handleNavigate(View.LOGIN)} 
+                      className="text-sm font-bold text-patriot-blue dark:text-blue-300 hover:underline"
                     >
                       Sign In
                     </button>
@@ -285,10 +363,16 @@ const App: React.FC = () => {
             </div>
             
             {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center">
+            <div className="md:hidden flex items-center gap-3">
+               <button
+                  onClick={toggleDarkMode}
+                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-400 flex items-center justify-center transition-colors"
+                >
+                  <i className={`fas ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+               </button>
                <button 
                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                 className="text-gray-600 hover:text-patriot-blue p-2 focus:outline-none"
+                 className="text-gray-600 dark:text-gray-300 hover:text-patriot-blue p-2 focus:outline-none"
                >
                   <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-bars'} text-2xl`}></i>
                </button>
@@ -298,24 +382,25 @@ const App: React.FC = () => {
 
         {/* Mobile Menu Dropdown */}
         {isMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 w-full bg-white shadow-lg z-40 border-b border-gray-200 animate-fade-in">
+          <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-800 shadow-lg z-40 border-b border-gray-200 dark:border-gray-700 animate-fade-in">
              <div className="flex flex-col p-4 space-y-2">
                 {user && (
-                  <div className="flex items-center gap-3 pb-4 border-b border-gray-100 mb-2">
+                  <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-700 mb-2">
                      <img src={user.photoUrl} alt={user.name} className="w-10 h-10 rounded-full" />
                      <div>
-                        <p className="font-bold text-gray-800">{user.name}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="font-bold text-gray-800 dark:text-white">{user.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                      </div>
                   </div>
                 )}
                 <NavLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
                 <NavLink view={View.QUIZ} label="Practice Quiz" icon="fa-pen-alt" />
+                <NavLink view={View.AI_TUTOR} label="AI Tutor" icon="fa-robot" isPremiumFeature={true} />
                 <NavLink view={View.LIVE_INTERVIEW} label="Live Interview" icon="fa-microphone-alt" isPremiumFeature={true} />
-                <NavLink view={View.RESOURCES} label="Resources" icon="fa-book" />
+                <NavLink view={View.NEWS} label="Immigration News" icon="fa-newspaper" />
                 <NavLink view={View.FIND_ATTORNEY} label="Find Attorney" icon="fa-gavel" />
                 
-                <div className="pt-4 mt-2 border-t border-gray-100 space-y-3">
+                <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-700 space-y-3">
                    {!userStats.isPremium && (
                     <button 
                       onClick={() => { handleUpgrade(); setIsMenuOpen(false); }}
@@ -327,13 +412,13 @@ const App: React.FC = () => {
                    {user ? (
                      <button 
                         onClick={handleLogout}
-                        className="w-full bg-gray-100 text-gray-700 px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2"
+                        className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2"
                       >
                         <i className="fas fa-sign-out-alt"></i> Sign Out
                       </button>
                    ) : (
                       <button 
-                        onClick={handleLogout}
+                        onClick={() => { handleNavigate(View.LOGIN); setIsMenuOpen(false); }}
                         className="w-full bg-patriot-blue text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2"
                       >
                         <i className="fas fa-sign-in-alt"></i> Sign In
@@ -351,14 +436,14 @@ const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
-           <p>&copy; 2024 LibertyLearn AI. Not affiliated with USCIS.</p>
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+           <p>&copy; 2025 Citizen Achiever. Not affiliated with USCIS.</p>
            <div className="flex space-x-4 mt-4 md:mt-0">
-              <button onClick={() => handleNavigate(View.FAQ)} className="hover:text-patriot-blue transition-colors">FAQ</button>
-              <button onClick={() => handleNavigate(View.PRIVACY)} className="hover:text-patriot-blue transition-colors">Privacy</button>
-              <button onClick={() => handleNavigate(View.TERMS)} className="hover:text-patriot-blue transition-colors">Terms</button>
-              <button onClick={() => handleNavigate(View.SUPPORT)} className="hover:text-patriot-blue transition-colors">Contact Support</button>
+              <button onClick={() => handleNavigate(View.FAQ)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">FAQ</button>
+              <button onClick={() => handleNavigate(View.PRIVACY)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Privacy</button>
+              <button onClick={() => handleNavigate(View.TERMS)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Terms</button>
+              <button onClick={() => handleNavigate(View.SUPPORT)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Contact Support</button>
            </div>
         </div>
       </footer>

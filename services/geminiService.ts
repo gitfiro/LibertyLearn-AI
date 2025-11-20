@@ -67,6 +67,29 @@ export const searchAttorneys = async (query: string): Promise<GenerateContentRes
   }
 };
 
+export const getImmigrationNews = async (): Promise<GenerateContentResponse> => {
+  try {
+    const prompt = `Find the latest news regarding United States immigration, USCIS policy changes, and citizenship application updates from the last 7 days.
+    
+    Summarize the top 5 most important stories.
+    For each story, provide a Headline and a brief 2-3 sentence summary.
+    
+    Do not include opinions, only facts from reputable news sources or government (.gov) websites.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+    return response;
+  } catch (error) {
+    console.error("Error fetching news:", error);
+    throw error;
+  }
+};
+
 export const createTutorChat = (): Chat => {
   return ai.chats.create({
     model: "gemini-2.5-flash",

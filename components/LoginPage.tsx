@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, View } from '../types';
 
 interface LoginPageProps {
   onLogin: (user: UserProfile) => void;
+  onNavigate: (view: View) => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   
@@ -14,21 +15,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  const handleGoogleLogin = () => {
-    setIsLoading(true);
-    // Simulate network delay for realistic feel
-    setTimeout(() => {
-      const mockUser: UserProfile = {
-        id: 'google_123456789',
-        name: 'Alex Hamilton',
-        email: 'alex.hamilton@gmail.com',
-        photoUrl: 'https://ui-avatars.com/api/?name=Alex+Hamilton&background=0D8ABC&color=fff&rounded=true'
-      };
-      setIsLoading(false);
-      onLogin(mockUser);
-    }, 1500);
-  };
 
   const handleEmailAuth = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +35,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     // Mock Database Logic
     setTimeout(() => {
       try {
-        const storedUsers = JSON.parse(localStorage.getItem('libertyLearn_users') || '{}');
+        const storedUsers = JSON.parse(localStorage.getItem('citizenAchiever_users') || '{}');
         const normalizedEmail = email.toLowerCase().trim();
 
         if (isRegistering) {
@@ -69,7 +55,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
           // Save to mock DB
           storedUsers[normalizedEmail] = newUser;
-          localStorage.setItem('libertyLearn_users', JSON.stringify(storedUsers));
+          localStorage.setItem('citizenAchiever_users', JSON.stringify(storedUsers));
 
           setIsLoading(false);
           // Login with sanitized user object (exclude password)
@@ -105,14 +91,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white">
+      {/* Back Button for Mobile/Desktop */}
+      <button 
+        onClick={() => onNavigate(View.LANDING)}
+        className="absolute top-4 left-4 z-50 text-white md:text-white bg-black/20 md:bg-transparent hover:bg-black/30 md:hover:bg-transparent px-3 py-1 rounded-full backdrop-blur-sm md:backdrop-blur-none transition flex items-center gap-2 font-medium"
+      >
+         <i className="fas fa-arrow-left"></i> Back to Home
+      </button>
+
       {/* Left Side - Hero */}
       <div className="md:w-1/2 bg-patriot-blue p-8 md:p-12 flex flex-col justify-between relative overflow-hidden">
-        <div className="relative z-10">
+        <div className="relative z-10 mt-12 md:mt-0">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-patriot-blue">
               <i className="fas fa-star"></i>
             </div>
-            <span className="font-bold text-2xl text-white">Liberty<span className="text-red-400">Learn</span></span>
+            <span className="font-bold text-2xl text-white">Citizen <span className="text-red-400">Achiever</span></span>
           </div>
           
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
@@ -127,7 +121,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
       {/* Right Side - Login Form */}
       <div className="md:w-1/2 p-8 md:p-12 flex items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md mt-10 md:mt-0">
           <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               {isRegistering ? 'Create Account' : 'Welcome Back'}
@@ -205,30 +199,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </button>
             </form>
 
-            <div className="flex items-center my-6">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-medium">OR</span>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
-
-            {/* Google Button */}
-            <button
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 px-4 rounded-xl transition-all transform active:scale-95 mb-6 shadow-sm"
-            >
-              {isLoading && !error ? (
-                <i className="fas fa-circle-notch fa-spin text-gray-400"></i>
-              ) : (
-                <img 
-                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
-                  alt="Google" 
-                  className="w-5 h-5"
-                />
-              )}
-              <span>Sign {isRegistering ? 'up' : 'in'} with Google</span>
-            </button>
-
             <div className="text-center">
                <p className="text-sm text-gray-600">
                  {isRegistering ? "Already have an account?" : "Don't have an account?"}
@@ -242,7 +212,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
             
             <p className="text-xs text-center text-gray-400 mt-6">
-              By continuing, you agree to our <span className="underline cursor-pointer hover:text-patriot-blue">Terms of Service</span> and <span className="underline cursor-pointer hover:text-patriot-blue">Privacy Policy</span>.
+              By continuing, you agree to our <button onClick={() => onNavigate(View.TERMS)} className="underline cursor-pointer hover:text-patriot-blue bg-transparent border-none p-0 inline">Terms of Service</button> and <button onClick={() => onNavigate(View.PRIVACY)} className="underline cursor-pointer hover:text-patriot-blue bg-transparent border-none p-0 inline">Privacy Policy</button>.
             </p>
           </div>
         </div>

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QuizCategory, Question, Difficulty } from '../types';
-import { generateQuizQuestions } from '../services/geminiService';
+import { civicsQuestions } from '../data/questions';
 
 interface QuizProps {
-  onComplete: (score: number, total: number) => void;
+  onComplete: (score: number, total: number, breakdown: Record<string, { correct: number; total: number }>) => void;
   isPremium: boolean;
   questionsInWindow: number;
   windowStartTime: number;
@@ -12,33 +12,63 @@ interface QuizProps {
 
 const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, windowStartTime, onUpgrade }) => {
   const [category, setCategory] = useState<QuizCategory>(QuizCategory.MIXED);
-  const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
+  const [questionCount, setQuestionCount] = useState<number>(10);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [quizStarted, setQuizStarted] = useState(false);
+  const [resultsHistory, setResultsHistory] = useState<{category: string, correct: boolean}[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState<string>("--:--:--");
 
   const FREE_LIMIT = 5;
   const isLimitReached = !isPremium && questionsInWindow >= FREE_LIMIT;
 
-  // Calculate reset time
-  const nextResetTime = windowStartTime + (12 * 60 * 60 * 1000);
-  const now = Date.now();
-  const msRemaining = Math.max(0, nextResetTime - now);
-  const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
-  const minutesRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+  useEffect(() => {
+    if (isPremium) return;
 
-  const startQuiz = async () => {
+    const updateTimer = () => {
+      const nextResetTime = windowStartTime + (12 * 60 * 60 * 1000);
+      const now = Date.now();
+      const msRemaining = Math.max(0, nextResetTime - now);
+
+      const pad = (n: number) => n.toString().padStart(2, '0');
+
+      if (msRemaining <= 0) {
+        setTimeRemaining("00h 00m 00s");
+      } else {
+        const h = Math.floor(msRemaining / (1000 * 60 * 60));
+        const m = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((msRemaining % (1000 * 60)) / 1000);
+        setTimeRemaining(`${pad(h)}h ${pad(m)}m ${pad(s)}s`);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [windowStartTime, isPremium]);
+
+  const startQuiz = () => {
     if (isLimitReached) return;
-    setLoading(true);
-    const q = await generateQuizQuestions(category, difficulty, 5);
-    setQuestions(q);
-    setLoading(false);
+
+    // 1. Filter by Category
+    let pool = civicsQuestions;
+    if (category !== QuizCategory.MIXED) {
+      pool = civicsQuestions.filter(q => q.category === category);
+    }
+
+    // 2. Shuffle
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+
+    // 3. Slice to requested count (handle if pool is smaller than count)
+    const selected = shuffled.slice(0, Math.min(questionCount, pool.length));
+
+    setQuestions(selected);
     setCurrentIndex(0);
     setScore(0);
+    setResultsHistory([]);
     setQuizStarted(true);
     setShowExplanation(false);
     setSelectedOption(null);
@@ -46,11 +76,19 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
 
   const handleAnswer = (option: string) => {
     if (selectedOption) return; // Prevent multiple guesses
+    
+    const isCorrect = option === questions[currentIndex].correctAnswer;
     setSelectedOption(option);
     setShowExplanation(true);
-    if (option === questions[currentIndex].correctAnswer) {
+    
+    if (isCorrect) {
       setScore(s => s + 1);
     }
+
+    setResultsHistory(prev => [...prev, {
+        category: questions[currentIndex].category,
+        correct: isCorrect
+    }]);
   };
 
   const nextQuestion = () => {
@@ -59,22 +97,33 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
       setSelectedOption(null);
       setShowExplanation(false);
     } else {
-      onComplete(score, questions.length);
+      // Calculate breakdown
+      const breakdown: Record<string, { correct: number; total: number }> = {};
+      resultsHistory.forEach(r => {
+          if (!breakdown[r.category]) {
+              breakdown[r.category] = { correct: 0, total: 0 };
+          }
+          breakdown[r.category].total += 1;
+          if (r.correct) {
+              breakdown[r.category].correct += 1;
+          }
+      });
+      onComplete(score, questions.length, breakdown);
     }
   };
 
   if (isLimitReached && !quizStarted) {
      return (
-      <div className="max-w-2xl mx-auto bg-white p-10 rounded-xl shadow-lg text-center border border-gray-200">
-         <div className="w-20 h-20 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-10 rounded-xl shadow-lg text-center border border-gray-200 dark:border-gray-700 transition-colors">
+         <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
             <i className="fas fa-hourglass-end"></i>
          </div>
-         <h2 className="text-3xl font-bold text-gray-800 mb-4">Daily Limit Reached</h2>
-         <p className="text-gray-600 mb-2 text-lg">
+         <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">Daily Limit Reached</h2>
+         <p className="text-gray-600 dark:text-gray-300 mb-2 text-lg">
             You have used your 5 free practice questions for this period. 
          </p>
-         <p className="text-gray-500 mb-8 font-mono bg-gray-100 inline-block px-4 py-2 rounded-lg">
-            Resets in: {hoursRemaining}h {minutesRemaining}m
+         <p className="text-gray-500 dark:text-gray-400 mb-8 font-mono bg-gray-100 dark:bg-gray-700 inline-block px-4 py-2 rounded-lg flex items-center gap-2 mx-auto">
+            <i className="fas fa-stopwatch"></i> Resets in: <span className="font-bold text-patriot-blue dark:text-blue-300">{timeRemaining}</span>
          </p>
          <button
             onClick={onUpgrade}
@@ -88,17 +137,20 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
 
   if (!quizStarted) {
     return (
-      <div className="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border-t-4 border-patriot-blue relative">
+      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border-t-4 border-patriot-blue relative transition-colors">
         {!isPremium && (
-          <div className="absolute top-4 right-4 bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">
-            Free Access: {questionsInWindow}/{FREE_LIMIT} (Resets every 12h)
+          <div className="absolute top-4 right-4 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs px-3 py-2 rounded-lg border border-yellow-200 dark:border-yellow-800 shadow-sm text-right">
+            <div className="font-bold mb-1"><i className="fas fa-bolt text-yellow-500 mr-1"></i> {questionsInWindow}/{FREE_LIMIT} Used</div>
+             <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center justify-end gap-1">
+               <i className="fas fa-clock"></i> Reset: <span className="font-mono font-medium">{timeRemaining}</span>
+             </div>
           </div>
         )}
         
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Customize Your Practice</h2>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Customize Your Practice</h2>
         
         <div className="mb-6">
-          <label className="block text-gray-700 font-semibold mb-2">Select Category</label>
+          <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Select Category</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Object.values(QuizCategory).map((cat) => (
               <button
@@ -106,8 +158,8 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
                 onClick={() => setCategory(cat)}
                 className={`p-4 rounded-lg border text-left transition-all ${
                   category === cat 
-                  ? 'border-patriot-blue bg-blue-50 text-patriot-blue ring-2 ring-patriot-blue' 
-                  : 'border-gray-200 hover:border-blue-300'
+                  ? 'border-patriot-blue bg-blue-50 dark:bg-blue-900/30 text-patriot-blue dark:text-blue-300 ring-2 ring-patriot-blue' 
+                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
                 }`}
               >
                 <span className="block font-medium">{cat}</span>
@@ -117,62 +169,56 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
         </div>
 
         <div className="mb-8">
-          <label className="block text-gray-700 font-semibold mb-2">Select Difficulty</label>
-          <div className="flex flex-col sm:flex-row gap-3">
-            {Object.values(Difficulty).map((level) => (
+          <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Number of Questions</label>
+          <div className="flex flex-wrap gap-3">
+            {[10, 20, 50, 100].map((count) => (
               <button
-                key={level}
-                onClick={() => setDifficulty(level)}
-                className={`flex-1 p-3 rounded-lg border text-center transition-all font-medium ${
-                  difficulty === level
-                  ? 'border-patriot-blue bg-blue-50 text-patriot-blue ring-2 ring-patriot-blue'
-                  : 'border-gray-200 hover:border-blue-300 text-gray-600'
+                key={count}
+                onClick={() => setQuestionCount(count)}
+                className={`flex-1 min-w-[80px] p-3 rounded-lg border text-center transition-all font-medium ${
+                  questionCount === count
+                  ? 'border-patriot-blue bg-blue-50 dark:bg-blue-900/30 text-patriot-blue dark:text-blue-300 ring-2 ring-patriot-blue'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-gray-500 text-gray-600 dark:text-gray-300'
                 }`}
               >
-                {level}
+                {count}
               </button>
             ))}
           </div>
+          {!isPremium && questionCount > 5 && (
+             <p className="text-xs text-orange-500 mt-2"><i className="fas fa-exclamation-triangle"></i> Free plan limited to 5 questions.</p>
+          )}
         </div>
 
         <button
           onClick={startQuiz}
-          disabled={loading}
           className="w-full bg-patriot-red text-white py-3 rounded-lg font-bold text-lg shadow-md hover:bg-red-700 transition-colors flex justify-center items-center gap-2"
         >
-          {loading ? (
-            <>
-              <i className="fas fa-circle-notch fa-spin"></i> Generating Quiz...
-            </>
-          ) : (
-            <>Start Quiz</>
-          )}
+          Start Quiz
         </button>
       </div>
     );
   }
 
-  if (questions.length === 0) return <div>Error loading questions. Please try again.</div>;
+  if (questions.length === 0) return (
+    <div className="text-center p-8">
+      <p className="dark:text-gray-200">No questions found for this category. Please try another selection.</p>
+      <button onClick={() => setQuizStarted(false)} className="text-patriot-blue dark:text-blue-400 font-bold mt-4">Go Back</button>
+    </div>
+  );
 
   const currentQ = questions[currentIndex];
 
   return (
     <div className="max-w-3xl mx-auto">
       {/* Progress Bar */}
-      <div className="mb-6 flex items-center justify-between text-sm font-medium text-gray-500">
+      <div className="mb-6 flex items-center justify-between text-sm font-medium text-gray-500 dark:text-gray-400">
         <span className="flex items-center gap-2">
           <span>Question {currentIndex + 1} of {questions.length}</span>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            difficulty === Difficulty.EASY ? 'bg-green-100 text-green-800' :
-            difficulty === Difficulty.MEDIUM ? 'bg-yellow-100 text-yellow-800' :
-            'bg-red-100 text-red-800'
-          }`}>
-            {difficulty}
-          </span>
         </span>
         <span>Score: {score}</span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2 mb-8">
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-8">
         <div 
           className="bg-patriot-blue h-2 rounded-full transition-all duration-500" 
           style={{ width: `${((currentIndex) / questions.length) * 100}%` }}
@@ -180,21 +226,21 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
       </div>
 
       {/* Question Card */}
-      <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg mb-6 relative overflow-hidden">
-        <span className="inline-block bg-blue-100 text-patriot-blue text-xs px-2 py-1 rounded mb-3 font-bold uppercase tracking-wider">
+      <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-xl shadow-lg mb-6 relative overflow-hidden transition-colors">
+        <span className="inline-block bg-blue-100 dark:bg-blue-900/40 text-patriot-blue dark:text-blue-300 text-xs px-2 py-1 rounded mb-3 font-bold uppercase tracking-wider">
           {currentQ.category}
         </span>
-        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6">
+        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-6">
           {currentQ.questionText}
         </h3>
 
         <div className="space-y-3">
           {currentQ.options.map((option, idx) => {
-             let btnClass = "border-gray-200 hover:bg-gray-50 text-gray-700";
+             let btnClass = "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200";
              if (selectedOption) {
-                if (option === currentQ.correctAnswer) btnClass = "bg-green-100 border-green-500 text-green-800";
-                else if (option === selectedOption) btnClass = "bg-red-100 border-red-500 text-red-800";
-                else btnClass = "opacity-50 border-gray-200";
+                if (option === currentQ.correctAnswer) btnClass = "bg-green-100 dark:bg-green-900/40 border-green-500 text-green-800 dark:text-green-200";
+                else if (option === selectedOption) btnClass = "bg-red-100 dark:bg-red-900/40 border-red-500 text-red-800 dark:text-red-200";
+                else btnClass = "opacity-50 border-gray-200 dark:border-gray-700 dark:text-gray-400";
              }
 
              return (
@@ -205,7 +251,7 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
                 className={`w-full text-left p-4 rounded-lg border-2 transition-all ${btnClass}`}
               >
                 <div className="flex items-center">
-                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-300 mr-3 text-sm font-bold text-gray-500">
+                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 mr-3 text-sm font-bold text-gray-500 dark:text-gray-300">
                     {String.fromCharCode(65 + idx)}
                   </span>
                   {option}
@@ -218,19 +264,19 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
 
       {/* Explanation & Next */}
       {showExplanation && (
-        <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl mb-24 animate-fade-in">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-6 rounded-xl mb-24 animate-fade-in">
           <div className="flex items-start gap-3">
              <i className="fas fa-lightbulb text-yellow-500 text-xl mt-1"></i>
              <div>
-                <h4 className="font-bold text-patriot-blue mb-1">Explanation</h4>
-                <p className="text-gray-700">{currentQ.explanation}</p>
+                <h4 className="font-bold text-patriot-blue dark:text-blue-300 mb-1">Explanation</h4>
+                <p className="text-gray-700 dark:text-gray-300">{currentQ.explanation}</p>
              </div>
           </div>
         </div>
       )}
 
       {showExplanation && (
-         <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 flex justify-center z-50">
+         <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex justify-center z-50 transition-colors">
             <button 
               onClick={nextQuestion}
               className="bg-patriot-blue text-white px-12 py-3 rounded-full font-bold shadow-lg hover:bg-blue-900 transition-transform hover:scale-105"

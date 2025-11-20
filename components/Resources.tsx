@@ -90,7 +90,7 @@ const Resources: React.FC = () => {
         <div className="bg-blue-50 p-6 border-t border-blue-100 text-center">
             <p className="text-sm text-gray-600">
                 <i className="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>
-                <strong>Disclaimer:</strong> LibertyLearn AI is an educational tool. All forms and official documents linked above are hosted on 
+                <strong>Disclaimer:</strong> Citizen Achiever is an educational tool. All forms and official documents linked above are hosted on 
                 <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="text-patriot-blue font-bold hover:underline ml-1">uscis.gov</a>. 
                 Always check the official USCIS website for the most up-to-date fees and filing instructions.
             </p>

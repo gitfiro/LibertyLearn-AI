@@ -1,10 +1,13 @@
+
 export enum View {
+  LANDING = 'LANDING',
   LOGIN = 'LOGIN',
   DASHBOARD = 'DASHBOARD',
   QUIZ = 'QUIZ',
   LIVE_INTERVIEW = 'LIVE_INTERVIEW',
+  AI_TUTOR = 'AI_TUTOR',
   FIND_ATTORNEY = 'FIND_ATTORNEY',
-  RESOURCES = 'RESOURCES',
+  NEWS = 'NEWS',
   PAYMENT = 'PAYMENT',
   PRIVACY = 'PRIVACY',
   TERMS = 'TERMS',
@@ -58,6 +61,7 @@ export interface UserStats {
   totalCorrect: number;
   totalQuestions: number;
   masteryByTopic: Record<string, number>; // 0-100
+  performanceByTopic?: Record<string, { correct: number; total: number }>; // Detailed stats for calculation
   isPremium: boolean;
   questionsInWindow: number;
   windowStartTime: number;
