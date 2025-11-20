@@ -37,23 +37,36 @@ function decode(base64: string) {
   return bytes;
 }
 
+// Robust Audio Decoding for PCM 16-bit (Fixed for Android/Safari)
 async function decodeAudioData(
   data: Uint8Array,
   ctx: AudioContext,
   sampleRate: number,
   numChannels: number,
 ): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
+  // Ensure even byte length for Int16 and byte alignment
+  if (data.length % 2 !== 0) {
+    const newData = new Uint8Array(data.length + 1);
+    newData.set(data);
+    data = newData;
+  }
+
+  // Create a copy of the buffer to ensure byte offset alignment
+  // Int16Array(buffer, offset) requires offset to be a multiple of 2.
+  const bufferCopy = data.slice().buffer;
+  const dataInt16 = new Int16Array(bufferCopy);
+  
   const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+  const audioBuffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
 
   for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
+    const channelData = audioBuffer.getChannelData(channel);
     for (let i = 0; i < frameCount; i++) {
+      // Normalize 16-bit integer to float [-1, 1]
       channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
     }
   }
-  return buffer;
+  return audioBuffer;
 }
 
 const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) => {
@@ -109,14 +122,25 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
     try {
       setStatus('Connecting...');
       
-      // Initialize Audio Contexts
+      // Initialize Audio Contexts with user gesture
       inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      
+      // Resume contexts if suspended (common on mobile)
+      if (inputAudioContextRef.current.state === 'suspended') await inputAudioContextRef.current.resume();
+      if (outputAudioContextRef.current.state === 'suspended') await outputAudioContextRef.current.resume();
+
       const outputNode = outputAudioContextRef.current.createGain();
       outputNode.connect(outputAudioContextRef.current.destination);
 
       // Get Microphone Stream
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
       streamRef.current = stream;
 
       // Connect to Gemini Live
@@ -158,23 +182,27 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
                 const ctx = outputAudioContextRef.current;
                 nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
                 
-                const audioBuffer = await decodeAudioData(
-                  decode(base64EncodedAudioString),
-                  ctx,
-                  24000,
-                  1
-                );
+                try {
+                  const audioBuffer = await decodeAudioData(
+                    decode(base64EncodedAudioString),
+                    ctx,
+                    24000,
+                    1
+                  );
 
-                const source = ctx.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(outputNode);
-                source.addEventListener('ended', () => {
-                  sourcesRef.current.delete(source);
-                });
+                  const source = ctx.createBufferSource();
+                  source.buffer = audioBuffer;
+                  source.connect(outputNode);
+                  source.addEventListener('ended', () => {
+                    sourcesRef.current.delete(source);
+                  });
 
-                source.start(nextStartTimeRef.current);
-                nextStartTimeRef.current += audioBuffer.duration;
-                sourcesRef.current.add(source);
+                  source.start(nextStartTimeRef.current);
+                  nextStartTimeRef.current += audioBuffer.duration;
+                  sourcesRef.current.add(source);
+                } catch (err) {
+                  console.error("Decoding error:", err);
+                }
              }
 
              const interrupted = message.serverContent?.interrupted;
@@ -230,12 +258,12 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
 
   if (!isPremium) {
      return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] py-12 px-4 sm:px-8 bg-white rounded-xl shadow-md border border-gray-200 text-center">
-        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-red-100 rounded-full flex items-center justify-center mb-6">
+      <div className="flex flex-col items-center justify-center min-h-[50vh] py-12 px-4 sm:px-8 bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center transition-colors">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-6">
           <i className="fas fa-microphone-alt-slash text-3xl sm:text-4xl text-patriot-red"></i>
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Live Interview Locked</h2>
-        <p className="text-sm sm:text-base text-gray-600 mb-8 max-w-md">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-3">Live Interview Locked</h2>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-8 max-w-md">
           Practice with our real-time AI Officer to simulate the actual interview experience. 
           This premium feature requires advanced audio processing.
         </p>
@@ -250,7 +278,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-4xl mx-auto p-4 sm:p-8 bg-patriot-cream rounded-xl shadow-inner border border-gray-200 relative">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-4xl mx-auto p-4 sm:p-8 bg-patriot-cream dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700 relative transition-colors">
       
       {/* End Confirmation Modal */}
       {showEndConfirmation && (
@@ -284,23 +312,23 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
       )}
 
       <div className="mb-6 sm:mb-10 text-center w-full">
-        <div className="w-20 h-20 sm:w-32 sm:h-32 bg-patriot-blue rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-blue-100">
+        <div className="w-20 h-20 sm:w-32 sm:h-32 bg-patriot-blue rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-blue-100 dark:ring-blue-900">
           <i className={`fas fa-microphone-alt text-3xl sm:text-5xl transition-all duration-300 ${isConnected ? 'text-red-400 animate-pulse scale-110' : 'text-white'}`}></i>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-patriot-blue mb-3">Mock Interview Simulator</h2>
-        <p className="text-sm sm:text-base text-gray-600 max-w-lg mx-auto leading-relaxed">
+        <h2 className="text-2xl sm:text-3xl font-bold text-patriot-blue dark:text-blue-300 mb-3">Mock Interview Simulator</h2>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-lg mx-auto leading-relaxed">
           Practice with an AI Officer in real-time. Put on your headset, find a quiet place, and speak naturally.
         </p>
       </div>
 
-      <div className="mb-8 w-full max-w-md bg-white p-5 rounded-xl shadow-md border border-gray-100 text-center transform transition-all">
-        <p className={`font-mono text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 ${isConnected ? 'text-green-600' : 'text-gray-400'}`}>
+      <div className="mb-8 w-full max-w-md bg-white dark:bg-gray-700 p-5 rounded-xl shadow-md border border-gray-100 dark:border-gray-600 text-center transform transition-all">
+        <p className={`font-mono text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
           <i className={`fas fa-circle text-[10px] mr-2 ${isConnected ? 'animate-pulse' : ''}`}></i>
           {status}
         </p>
-        <div className="h-3 bg-gray-100 rounded-full overflow-hidden w-full ring-1 ring-gray-200">
+        <div className="h-3 bg-gray-100 dark:bg-gray-600 rounded-full overflow-hidden w-full ring-1 ring-gray-200 dark:ring-gray-500">
             <div 
-                className={`h-full transition-all duration-100 ${isConnected ? 'bg-gradient-to-r from-green-400 to-green-600' : 'bg-gray-300'}`}
+                className={`h-full transition-all duration-100 ${isConnected ? 'bg-gradient-to-r from-green-400 to-green-600' : 'bg-gray-300 dark:bg-gray-500'}`}
                 style={{ width: `${isConnected ? Math.max(5, volumeLevel * 100) : 0}%`}}
             ></div>
         </div>
@@ -331,7 +359,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
       </div>
       
       <div className="mt-auto pt-8 text-xs text-gray-400 flex flex-col sm:flex-row items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-         <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold"><i className="fas fa-bolt mr-1"></i> AI POWERED</span>
+         <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded-full font-bold"><i className="fas fa-bolt mr-1"></i> AI POWERED</span>
          <span>Voice processing by Gemini Live API</span>
       </div>
     </div>
@@ -339,4 +367,3 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
 };
 
 export default LiveInterview;
-    

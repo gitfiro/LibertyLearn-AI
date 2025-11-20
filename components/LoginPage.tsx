@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { UserProfile, View } from '../types';
 
 interface LoginPageProps {
@@ -15,6 +16,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  // Image Upload State
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        // Limit size to 2MB to prevent localStorage issues
+        if (file.size > 2 * 1024 * 1024) {
+            setError("Image size must be less than 2MB.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPreviewUrl(reader.result as string);
+            setError(null);
+        };
+        reader.readAsDataURL(file);
+    }
+  };
 
   const handleEmailAuth = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +73,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
             name: name.trim(),
             email: normalizedEmail,
             password: password, // Note: In a real production app, never store plain-text passwords
-            photoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=B22234&color=fff&rounded=true`
+            photoUrl: previewUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=B22234&color=fff&rounded=true`
           };
 
           // Save to mock DB
@@ -140,6 +163,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
             <form onSubmit={handleEmailAuth} className="space-y-4 mb-6">
               {isRegistering && (
                 <div className="animate-fade-in">
+                  {/* Profile Picture Upload */}
+                  <div className="flex justify-center mb-6">
+                    <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-inner group-hover:border-patriot-blue transition-colors bg-gray-50">
+                            {previewUrl ? (
+                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                    <i className="fas fa-camera text-2xl mb-1"></i>
+                                    <span className="text-[10px] uppercase font-bold">Upload</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="absolute bottom-0 right-0 bg-patriot-blue text-white w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 border-white shadow-md group-hover:scale-110 transition-transform">
+                            <i className="fas fa-plus"></i>
+                        </div>
+                    </div>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={handleFileChange}
+                    />
+                  </div>
+
                   <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Full Name</label>
                   <div className="relative">
                     <i className="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>

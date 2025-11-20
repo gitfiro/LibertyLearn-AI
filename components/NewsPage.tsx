@@ -50,17 +50,30 @@ const NewsPage: React.FC = () => {
     fetchNews();
   }, []);
 
-  // Simple parser to make the text look better without a Markdown library
+  // Enhanced parser for better news layout
   const renderFormattedText = (text: string) => {
     return text.split('\n').map((line, index) => {
-      // Heuristic for headlines (often bolded by AI or numbered lists)
-      if (line.match(/^(\*\*|##|\d+\.)/)) {
-        return <h3 key={index} className="text-xl font-bold text-patriot-blue dark:text-blue-300 mt-6 mb-2">{line.replace(/(\*\*|##)/g, '')}</h3>;
+      const trimmed = line.trim();
+      if (!trimmed) return <div key={index} className="h-2"></div>;
+
+      // Headlines (starts with **, ##, or Number.)
+      if (trimmed.match(/^(\*\*|##|\d+\.\s)/)) {
+        const content = trimmed.replace(/^(\*\*|##|\d+\.\s)/, '').replace(/(\*\*|##)/g, '');
+        return <h3 key={index} className="text-xl font-bold text-patriot-blue dark:text-blue-300 mt-6 mb-2">{content}</h3>;
       }
-      if (line.trim() === '') {
-        return <div key={index} className="h-2"></div>;
+
+      // Bullet points
+      if (trimmed.match(/^[\*•-]\s/)) {
+         const content = trimmed.replace(/^[\*•-]\s/, '');
+         return (
+           <div key={index} className="flex items-start gap-2 mb-2 ml-2">
+             <i className="fas fa-angle-right text-patriot-red mt-1.5 text-xs"></i>
+             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{content.replace(/\*\*/g, '')}</p>
+           </div>
+         );
       }
-      return <p key={index} className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">{line}</p>;
+
+      return <p key={index} className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">{line.replace(/\*\*/g, '')}</p>;
     });
   };
 
@@ -101,6 +114,9 @@ const NewsPage: React.FC = () => {
           ) : (
             <>
               <div className="prose dark:prose-invert max-w-none mb-10">
+                <p className="text-xs text-gray-400 text-right mb-4 italic">
+                   <i className="fas fa-clock mr-1"></i> Updated: {new Date().toLocaleDateString()}
+                </p>
                 {renderFormattedText(newsContent)}
               </div>
 

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { UserStats, UserProfile } from '../types';
@@ -11,177 +12,214 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrade }) => {
   
+  // Map data with detailed performance stats for the tooltip
   const data = Object.keys(stats.masteryByTopic).map(key => ({
     topic: key,
     score: stats.masteryByTopic[key],
+    details: stats.performanceByTopic?.[key] || { correct: 0, total: 0 }
   }));
 
   const FREE_LIMIT = 5;
-  // Calculate remaining based on the 12h window, not total questions
   const questionsLeft = Math.max(0, FREE_LIMIT - stats.questionsInWindow);
   const progressPercent = Math.min(100, (stats.questionsInWindow / FREE_LIMIT) * 100);
 
+  // Custom Tooltip Component
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const item = payload[0].payload;
+      return (
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 z-50">
+          <h4 className="font-bold text-patriot-blue dark:text-blue-300 mb-2 border-b border-gray-100 dark:border-gray-700 pb-1">{item.topic}</h4>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-4">
+               <span className="text-xs text-gray-500 dark:text-gray-400">Mastery</span>
+               <span className="font-bold text-patriot-red dark:text-red-400">{item.score}%</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+               <span className="text-xs text-gray-500 dark:text-gray-400">Correct</span>
+               <span className="font-medium text-gray-700 dark:text-gray-200">
+                 {item.details.total > 0 ? `${item.details.correct}/${item.details.total}` : 'N/A'}
+               </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
        {/* Hero Section */}
-       <div className="bg-gradient-to-r from-patriot-blue to-blue-900 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+       <div className="bg-gradient-to-r from-patriot-blue to-blue-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-2">
-               <h1 className="text-3xl font-bold">
-                 Welcome back, {user ? user.name.split(' ')[0] : 'Future Citizen'}!
+               <h1 className="text-2xl sm:text-3xl font-bold">
+                 Welcome, {user ? user.name.split(' ')[0] : 'Future Citizen'}!
                </h1>
                {stats.isPremium && <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide"><i className="fas fa-crown mr-1"></i> Premium</span>}
             </div>
-            <p className="text-blue-100 mb-6 max-w-lg">You are on the path to the American Dream. Continue your preparation with our AI-powered tools.</p>
-            <div className="flex flex-wrap gap-4">
-                <button onClick={() => onNavigate('QUIZ')} className="bg-white text-patriot-blue px-6 py-2 rounded-full font-bold hover:bg-blue-50 transition shadow-lg">
-                    <i className="fas fa-pen-alt mr-2"></i> Take a Quiz
-                </button>
-                {stats.isPremium ? (
-                   <button onClick={() => onNavigate('LIVE_INTERVIEW')} className="bg-patriot-red text-white px-6 py-2 rounded-full font-bold hover:bg-red-700 transition shadow-lg">
-                       <i className="fas fa-microphone mr-2"></i> Mock Interview
-                   </button>
-                ) : (
-                   <button onClick={onUpgrade} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2 rounded-full font-bold hover:from-yellow-500 hover:to-orange-600 transition shadow-lg">
-                       <i className="fas fa-crown mr-2"></i> Upgrade Plan
-                   </button>
-                )}
-            </div>
+            <p className="text-blue-100 mb-6 max-w-lg text-sm sm:text-base">Your complete preparation hub for the Naturalization Test.</p>
           </div>
-          <div className="absolute right-0 top-0 opacity-10 text-9xl transform translate-x-10 -translate-y-10">
+          <div className="absolute right-0 top-0 opacity-10 text-8xl sm:text-9xl transform translate-x-10 -translate-y-10">
              <i className="fas fa-flag-usa"></i>
           </div>
        </div>
 
-       {/* Free Plan Status Card */}
-       {!stats.isPremium && (
-         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border-l-4 border-yellow-400 flex flex-col sm:flex-row items-center justify-between gap-6 transition-colors">
-             <div className="flex-1 w-full">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-1"><i className="fas fa-info-circle text-yellow-500 mr-2"></i> Free Basic Access</h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">
-                   You have {questionsLeft} free questions remaining for this 12-hour period.
-                </p>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                   <div className="bg-yellow-400 h-3 rounded-full transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
-                </div>
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                   <span>0</span>
-                   <span>{stats.questionsInWindow} used</span>
-                   <span>{FREE_LIMIT} limit</span>
-                </div>
-             </div>
+       {/* Practice Center Grid */}
+       <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+             <i className="fas fa-layer-group text-patriot-red"></i> Practice Center
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+             {/* 1. Civics Quiz */}
              <button 
-               onClick={onUpgrade} 
-               className="whitespace-nowrap bg-gray-900 dark:bg-black text-white px-6 py-3 rounded-lg font-semibold shadow hover:bg-black transition flex items-center gap-2"
+               onClick={() => onNavigate('QUIZ')}
+               className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-patriot-blue dark:hover:border-blue-400 transition-all text-left group active:scale-[0.98]"
              >
-                <i className="fas fa-rocket"></i> Get Unlimited Access
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-patriot-blue dark:text-blue-300 text-xl mb-4 group-hover:scale-110 transition-transform">
+                   <i className="fas fa-question"></i>
+                </div>
+                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Civics Quiz</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Master the 100 official questions.</p>
              </button>
-         </div>
-       )}
 
-       {/* Stats Grid */}
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors">
-             <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-gray-500 dark:text-gray-400 font-medium">Quizzes Taken</h3>
-                 <i className="fas fa-clipboard-list text-blue-500 bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg"></i>
-             </div>
-             <p className="text-3xl font-bold text-gray-800 dark:text-white">{stats.quizzesTaken}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors">
-             <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-gray-500 dark:text-gray-400 font-medium">Questions Answered</h3>
-                 <i className="fas fa-tasks text-green-500 bg-green-100 dark:bg-green-900/30 p-2 rounded-lg"></i>
-             </div>
-             <p className="text-3xl font-bold text-gray-800 dark:text-white">{stats.totalQuestions}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors">
-             <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-gray-500 dark:text-gray-400 font-medium">Average Accuracy</h3>
-                 <i className="fas fa-bullseye text-red-500 bg-red-100 dark:bg-red-900/30 p-2 rounded-lg"></i>
-             </div>
-             <p className="text-3xl font-bold text-gray-800 dark:text-white">
-                {stats.totalQuestions > 0 ? Math.round((stats.totalCorrect / stats.totalQuestions) * 100) : 0}%
-             </p>
+             {/* 2. Reading Test */}
+             <button 
+               onClick={() => onNavigate('READING')}
+               className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-indigo-500 dark:hover:border-indigo-400 transition-all text-left group active:scale-[0.98]"
+             >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-300 text-xl mb-4 group-hover:scale-110 transition-transform">
+                   <i className="fas fa-book-reader"></i>
+                </div>
+                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Reading Test</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Practice reading sentences aloud.</p>
+             </button>
+
+             {/* 3. Writing Test */}
+             <button 
+               onClick={() => onNavigate('WRITING')}
+               className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-teal-500 dark:hover:border-teal-400 transition-all text-left group active:scale-[0.98]"
+             >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center text-teal-600 dark:text-teal-300 text-xl mb-4 group-hover:scale-110 transition-transform">
+                   <i className="fas fa-pen-alt"></i>
+                </div>
+                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Writing Test</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Listen and type sentences.</p>
+             </button>
+
+             {/* 4. Live Interview */}
+             <button 
+               onClick={() => onNavigate('LIVE_INTERVIEW')}
+               className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-patriot-red dark:hover:border-red-400'}`}
+             >
+                {!stats.isPremium && (
+                   <div className="absolute top-3 right-3 bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] px-2 py-1 rounded font-bold uppercase">
+                      <i className="fas fa-lock"></i> Locked
+                   </div>
+                )}
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center text-patriot-red dark:text-red-300 text-xl mb-4 group-hover:scale-110 transition-transform">
+                   <i className="fas fa-microphone-alt"></i>
+                </div>
+                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Mock Interview</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Voice simulation with AI Officer.</p>
+             </button>
           </div>
        </div>
 
-       {/* Topic Mastery - Radar Chart & Breakdowns */}
-       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Topic Mastery Profile</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Visualizing your strengths across civics categories</p>
-            </div>
-             <span className="hidden sm:block text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Real-time Analysis</span>
-          </div>
-          
-          <div className="flex flex-col lg:flex-row items-center gap-8">
-              {/* Radar Chart */}
-              <div className="h-80 w-full lg:w-1/2 relative">
-                 <ResponsiveContainer width="100%" height="100%">
+       {/* Stats & Charts Section */}
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+           {/* Left Col: Stats */}
+           <div className="lg:col-span-1 space-y-6">
+               {/* Free Plan Tracker */}
+               {!stats.isPremium && (
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border-l-4 border-yellow-400 transition-colors">
+                      <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex justify-between">
+                          <span>Daily Free Questions</span>
+                          <span className="text-yellow-600">{stats.questionsInWindow}/{FREE_LIMIT}</span>
+                      </h3>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+                        <div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${progressPercent}%` }}></div>
+                      </div>
+                      <button onClick={onUpgrade} className="w-full py-3 rounded-lg bg-gray-900 dark:bg-black text-white text-xs font-bold active:opacity-90 hover:bg-gray-800 transition-colors">
+                          Unlock Unlimited Access
+                      </button>
+                  </div>
+               )}
+
+               <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors">
+                   <h3 className="text-gray-500 dark:text-gray-400 font-medium mb-4">Overview</h3>
+                   <div className="grid grid-cols-2 gap-4 text-center">
+                       <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                           <p className="text-3xl font-bold text-patriot-blue dark:text-blue-300">{stats.quizzesTaken}</p>
+                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-1">Quizzes</p>
+                       </div>
+                       <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                           <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                              {stats.totalQuestions > 0 ? Math.round((stats.totalCorrect / stats.totalQuestions) * 100) : 0}%
+                           </p>
+                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-1">Accuracy</p>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+           {/* Right Col: Radar Chart */}
+           <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors flex flex-col min-h-[350px]">
+               <div className="flex items-center justify-between mb-6">
+                 <h3 className="font-bold text-gray-800 dark:text-white text-lg">Topic Mastery</h3>
+                 {stats.totalQuestions > 0 && (
+                    <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded-full font-medium">
+                       Live Data
+                    </span>
+                 )}
+               </div>
+               
+               <div className="flex-1 relative w-full h-full">
+                   <ResponsiveContainer width="100%" height={300}>
                     <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
-                      <PolarGrid gridType="polygon" stroke="#e5e7eb" />
+                      <PolarGrid 
+                        gridType="polygon" 
+                        stroke="#e5e7eb" 
+                        strokeDasharray="3 3" 
+                        className="dark:stroke-gray-700"
+                      />
                       <PolarAngleAxis 
                         dataKey="topic" 
                         tick={{ fill: '#6B7280', fontSize: 11, fontWeight: 600 }} 
+                        tickLine={false}
                       />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                      <PolarRadiusAxis 
+                        angle={30} 
+                        domain={[0, 100]} 
+                        tick={false} 
+                        axisLine={false} 
+                      />
                       <Radar
                         name="Mastery"
                         dataKey="score"
                         stroke="#B22234"
                         strokeWidth={3}
                         fill="#B22234"
-                        fillOpacity={0.2}
+                        fillOpacity={0.3}
+                        isAnimationActive={true}
                       />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                        itemStyle={{ color: '#B22234', fontWeight: 'bold' }}
-                        formatter={(value: number) => [`${value}%`, 'Score']}
-                      />
+                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#B22234', strokeWidth: 1, strokeDasharray: '4 4' }} />
                     </RadarChart>
                  </ResponsiveContainer>
                  
-                 {/* Empty State Overlay if no data */}
                  {stats.totalQuestions === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-                        <div className="text-center">
-                            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Take a quiz to see your analysis</p>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-[2px] rounded-xl text-center p-6">
+                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3 text-gray-400">
+                           <i className="fas fa-chart-pie text-xl"></i>
                         </div>
+                        <p className="text-gray-600 dark:text-gray-300 font-bold">No Data Available</p>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Complete quizzes to see your knowledge breakdown.</p>
+                        <button onClick={() => onNavigate('QUIZ')} className="mt-4 text-patriot-blue font-bold text-sm hover:underline">Start a Quiz</button>
                     </div>
                  )}
-              </div>
-              
-              {/* Detailed Breakdown Cards */}
-              <div className="w-full lg:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 {data.map((item, idx) => (
-                     <div key={idx} className="p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 hover:shadow-md transition-all bg-gray-50 dark:bg-gray-700/50 group">
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate pr-2" title={item.topic}>{item.topic}</span>
-                            {item.score >= 80 ? <i className="fas fa-check-circle text-green-500"></i> : 
-                             item.score >= 50 ? <i className="fas fa-adjust text-yellow-500"></i> : 
-                             <i className="fas fa-exclamation-circle text-red-400"></i>}
-                        </div>
-                        <div className="flex items-end gap-3">
-                            <span className="text-2xl font-bold text-gray-800 dark:text-white group-hover:text-patriot-blue dark:group-hover:text-blue-300 transition-colors">{item.score}%</span>
-                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-1.5 overflow-hidden">
-                                <div 
-                                    className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                                        item.score >= 80 ? 'bg-green-500' : 
-                                        item.score >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                                    }`} 
-                                    style={{ width: `${item.score}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                            {item.score >= 80 ? 'Excellent mastery' : item.score >= 50 ? 'Keep practicing' : 'Needs attention'}
-                        </p>
-                     </div>
-                 ))}
-              </div>
-          </div>
+               </div>
+           </div>
        </div>
     </div>
   );

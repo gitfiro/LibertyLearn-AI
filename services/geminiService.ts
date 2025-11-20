@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type, Chat, GenerateContentResponse } from "@google/genai";
+
+import { GoogleGenAI, Type, Chat, GenerateContentResponse, Modality } from "@google/genai";
 import { QuizCategory, Question, Difficulty } from '../types';
 
 // Initialize Gemini Client
@@ -98,5 +99,88 @@ export const createTutorChat = (): Chat => {
     },
   });
 };
+
+// --- READING TEST SERVICES ---
+
+export const getReadingSentence = async (): Promise<string> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: "Generate one simple English sentence derived from the official USCIS Reading Vocabulary list for the Naturalization Test. It should be a question about Civics (e.g. 'Who elects Congress?', 'When is Columbus Day?'). Output ONLY the sentence text, nothing else.",
+    });
+    return response.text?.trim() || "Who was the first President?";
+  } catch (e) {
+    console.error(e);
+    return "Who was the first President?";
+  }
+};
+
+export const evaluateReading = async (expectedText: string, audioBase64: string, mimeType: string): Promise<{correct: boolean, feedback: string}> => {
+  try {
+    const prompt = `I asked a student to read this sentence out loud: "${expectedText}".
+    Listen to their recording.
+    Did they read the sentence correctly? Minor accent or small pauses are acceptable, but they must say the correct words.
+    Return valid JSON: { "correct": boolean, "feedback": "short constructive feedback string, under 20 words" }.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: {
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: mimeType, data: audioBase64 } }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            correct: { type: Type.BOOLEAN },
+            feedback: { type: Type.STRING }
+          },
+          required: ["correct", "feedback"]
+        }
+      }
+    });
+    
+    return JSON.parse(response.text || '{"correct": false, "feedback": "Error analyzing audio."}');
+  } catch (e) {
+    console.error(e);
+    return { correct: false, feedback: "Could not analyze audio. Please try again." };
+  }
+};
+
+// --- WRITING TEST SERVICES ---
+
+export const getWritingSentence = async (): Promise<string> => {
+  try {
+      const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: "Generate one simple English sentence using the official USCIS Writing Vocabulary list. It must be a factual statement about US history or government (e.g., 'Adams was the second president', 'The White House is in Washington D.C.'). Output ONLY the sentence.",
+      });
+      return response.text?.trim() || "Lincoln was the President during the Civil War.";
+  } catch (e) {
+      return "Lincoln was the President during the Civil War.";
+  }
+};
+
+export const generateSpeech = async (text: string): Promise<string> => {
+  try {
+      const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash-preview-tts",
+          contents: { parts: [{ text: text }] },
+          config: {
+              responseModalities: [Modality.AUDIO],
+              speechConfig: {
+                  voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
+              }
+          }
+      });
+      return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || "";
+  } catch (e) {
+      console.error(e);
+      throw e;
+  }
+}
 
 export const getAIInstance = () => ai;

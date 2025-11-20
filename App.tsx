@@ -1,8 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, UserStats, UserProfile } from './types';
 import Dashboard from './components/Dashboard';
 import Quiz from './components/Quiz';
+import ReadingTest from './components/ReadingTest';
+import WritingTest from './components/WritingTest';
 import LiveInterview from './components/LiveInterview';
 import FindAttorney from './components/FindAttorney';
 import PaymentPage from './components/PaymentPage';
@@ -17,7 +19,13 @@ const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'info'} | null>(null);
   
+  // Profile Edit State
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editProfileData, setEditProfileData] = useState({ name: '', photoUrl: '' });
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
   const [user, setUser] = useState<UserProfile | null>(null);
   
   const defaultStats: UserStats = {
@@ -30,7 +38,7 @@ const App: React.FC = () => {
       'Integrated Civics': 0,
       'Civic Duties': 0
     },
-    performanceByTopic: {}, // Initialize performance tracking
+    performanceByTopic: {}, 
     isPremium: false,
     questionsInWindow: 0,
     windowStartTime: Date.now()
@@ -64,12 +72,24 @@ const App: React.FC = () => {
     });
   };
 
+  // Show notification helper
+  const showNotification = (message: string, type: 'success' | 'info' = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   // Load user from local storage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('citizenAchieverUser');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
       setCurrentView(View.DASHBOARD);
+    } else {
+      // Load guest stats if no user is logged in
+      const guestStats = localStorage.getItem('citizenAchiever_guest_stats');
+      if (guestStats) {
+        setUserStats(JSON.parse(guestStats));
+      }
     }
   }, []);
 
@@ -81,20 +101,24 @@ const App: React.FC = () => {
       if (savedStats) {
         setUserStats(JSON.parse(savedStats));
       } else {
-        // New user or no history, start fresh
+        // New user or no history, start fresh (or migrate guest stats?)
+        // For now, we start fresh to distinguish accounts
         setUserStats({
           ...defaultStats, 
-          windowStartTime: Date.now() // Ensure fresh timer
+          windowStartTime: Date.now() 
         });
       }
     }
   }, [user]);
 
-  // Persist stats whenever they change, if a user is logged in
+  // Persist stats whenever they change
   useEffect(() => {
     if (user && user.id) {
       const storageKey = `citizenAchiever_stats_${user.id}`;
       localStorage.setItem(storageKey, JSON.stringify(userStats));
+    } else {
+      // Persist guest stats
+      localStorage.setItem('citizenAchiever_guest_stats', JSON.stringify(userStats));
     }
   }, [userStats, user]);
 
@@ -102,15 +126,24 @@ const App: React.FC = () => {
     setUser(loggedInUser);
     localStorage.setItem('citizenAchieverUser', JSON.stringify(loggedInUser));
     setCurrentView(View.DASHBOARD);
+    showNotification(`Welcome back, ${loggedInUser.name.split(' ')[0]}!`, 'success');
   };
 
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('citizenAchieverUser');
-    // Stats will reset to default via the useEffect when user becomes null, but we manually clear to be safe for UI
-    setUserStats(defaultStats);
+    
+    // Reset to guest stats or defaults
+    const guestStats = localStorage.getItem('citizenAchiever_guest_stats');
+    if (guestStats) {
+      setUserStats(JSON.parse(guestStats));
+    } else {
+      setUserStats(defaultStats);
+    }
+    
     setCurrentView(View.LANDING);
     setIsProfileMenuOpen(false);
+    showNotification('Successfully signed out.', 'info');
   };
 
   const handleQuizComplete = (
@@ -119,12 +152,10 @@ const App: React.FC = () => {
     breakdown: Record<string, { correct: number; total: number }> = {}
   ) => {
     setUserStats(prev => {
-      // Get current detailed stats or initialize
       const currentPerf = prev.performanceByTopic || {};
       const newPerf = { ...currentPerf };
       const newMastery = { ...prev.masteryByTopic };
 
-      // Update stats for each category present in this quiz
       Object.entries(breakdown).forEach(([category, stats]) => {
         if (!newPerf[category]) {
              newPerf[category] = { correct: 0, total: 0 };
@@ -132,7 +163,6 @@ const App: React.FC = () => {
         newPerf[category].correct += stats.correct;
         newPerf[category].total += stats.total;
         
-        // Recalculate percentage mastery
         if (newPerf[category].total > 0) {
             newMastery[category] = Math.round((newPerf[category].correct / newPerf[category].total) * 100);
         }
@@ -148,16 +178,24 @@ const App: React.FC = () => {
         performanceByTopic: newPerf
       };
     });
-    setTimeout(() => setCurrentView(View.DASHBOARD), 2000);
+    
+    showNotification('Quiz progress saved!', 'success');
+    setTimeout(() => setCurrentView(View.DASHBOARD), 1500);
   };
 
   const handleUpgrade = () => {
+    if (!user) {
+       showNotification('Please sign in to upgrade.', 'info');
+       setCurrentView(View.LOGIN);
+       return;
+    }
     setCurrentView(View.PAYMENT);
   };
 
   const handlePaymentSuccess = () => {
     setUserStats(prev => ({ ...prev, isPremium: true }));
     setCurrentView(View.DASHBOARD);
+    showNotification('Premium features unlocked!', 'success');
   };
 
   const handleNavigate = (view: View) => {
@@ -178,13 +216,92 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
+  // Profile Editing Functions
+  const openEditProfile = () => {
+    if (user) {
+      setEditProfileData({ name: user.name, photoUrl: user.photoUrl });
+      setIsEditProfileOpen(true);
+      setIsProfileMenuOpen(false);
+    }
+  };
+
+  const handleEditProfileFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        showNotification("Image size must be less than 2MB.", 'info');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditProfileData(prev => ({ ...prev, photoUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const saveProfileChanges = () => {
+    if (!user) return;
+    if (!editProfileData.name.trim()) {
+      showNotification("Name cannot be empty.", 'info');
+      return;
+    }
+
+    const updatedUser = {
+      ...user,
+      name: editProfileData.name.trim(),
+      photoUrl: editProfileData.photoUrl
+    };
+
+    // 1. Update state
+    setUser(updatedUser);
+    
+    // 2. Update current session storage
+    localStorage.setItem('citizenAchieverUser', JSON.stringify(updatedUser));
+
+    // 3. Update mock database
+    try {
+      const storedUsers = JSON.parse(localStorage.getItem('citizenAchiever_users') || '{}');
+      if (storedUsers[user.email]) {
+        storedUsers[user.email] = {
+           ...storedUsers[user.email],
+           name: updatedUser.name,
+           photoUrl: updatedUser.photoUrl
+        };
+        localStorage.setItem('citizenAchiever_users', JSON.stringify(storedUsers));
+      }
+    } catch (e) {
+      console.error("Failed to update database", e);
+    }
+
+    setIsEditProfileOpen(false);
+    showNotification("Profile updated successfully!", 'success');
+  };
+
   // Standalone Views (No Main Layout)
   if (currentView === View.LOGIN) {
     return <LoginPage onLogin={handleLogin} onNavigate={handleNavigate} />;
   }
 
   if (currentView === View.LANDING) {
-    return <LandingPage onNavigate={handleNavigate} />;
+    return (
+      <>
+        <LandingPage onNavigate={handleNavigate} />
+        {/* Global Notification Toast */}
+        {notification && (
+            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in">
+            <div className={`px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border ${
+                notification.type === 'success' 
+                ? 'bg-white text-green-800 border-green-100' 
+                : 'bg-gray-900 text-white border-gray-700'
+            }`}>
+                <i className={`fas ${notification.type === 'success' ? 'fa-check-circle text-green-500' : 'fa-info-circle'}`}></i>
+                <span className="font-medium text-sm">{notification.message}</span>
+            </div>
+            </div>
+        )}
+      </>
+    );
   }
 
   const renderContent = () => {
@@ -208,6 +325,10 @@ const App: React.FC = () => {
             onUpgrade={handleUpgrade}
           />
         );
+      case View.READING:
+        return <ReadingTest />;
+      case View.WRITING:
+        return <WritingTest />;
       case View.LIVE_INTERVIEW:
         return (
           <LiveInterview 
@@ -270,9 +391,9 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 font-sans text-patriot-slate dark:text-gray-100 transition-colors duration-200">
-      {/* Navigation Bar */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-700 transition-colors">
+    <div className="min-h-[100dvh] flex flex-col bg-gray-50 dark:bg-gray-900 font-sans text-patriot-slate dark:text-gray-100 transition-colors duration-200">
+      {/* Navigation Bar - Safe Area Aware */}
+      <nav className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-700 transition-colors pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             {/* Logo */}
@@ -325,7 +446,7 @@ const App: React.FC = () => {
                         <img 
                           src={user.photoUrl} 
                           alt={user.name} 
-                          className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-gray-600"
+                          className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-gray-600 object-cover"
                         />
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[100px] truncate hidden lg:block">{user.name}</span>
                         <i className="fas fa-chevron-down text-gray-400 text-xs"></i>
@@ -337,6 +458,9 @@ const App: React.FC = () => {
                               <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user.name}</p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                            </div>
+                           <button onClick={openEditProfile} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                              Edit Profile
+                           </button>
                            <button onClick={handleUpgrade} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                               Billing Settings
                            </button>
@@ -382,11 +506,11 @@ const App: React.FC = () => {
 
         {/* Mobile Menu Dropdown */}
         {isMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-800 shadow-lg z-40 border-b border-gray-200 dark:border-gray-700 animate-fade-in">
+          <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-800 shadow-lg z-40 border-b border-gray-200 dark:border-gray-700 animate-fade-in max-h-[calc(100dvh-4rem)] overflow-y-auto">
              <div className="flex flex-col p-4 space-y-2">
                 {user && (
                   <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-700 mb-2">
-                     <img src={user.photoUrl} alt={user.name} className="w-10 h-10 rounded-full" />
+                     <img src={user.photoUrl} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
                      <div>
                         <p className="font-bold text-gray-800 dark:text-white">{user.name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
@@ -395,12 +519,14 @@ const App: React.FC = () => {
                 )}
                 <NavLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
                 <NavLink view={View.QUIZ} label="Practice Quiz" icon="fa-pen-alt" />
+                <NavLink view={View.READING} label="Reading Test" icon="fa-book-reader" />
+                <NavLink view={View.WRITING} label="Writing Test" icon="fa-pen-alt" />
                 <NavLink view={View.AI_TUTOR} label="AI Tutor" icon="fa-robot" isPremiumFeature={true} />
                 <NavLink view={View.LIVE_INTERVIEW} label="Live Interview" icon="fa-microphone-alt" isPremiumFeature={true} />
                 <NavLink view={View.NEWS} label="Immigration News" icon="fa-newspaper" />
                 <NavLink view={View.FIND_ATTORNEY} label="Find Attorney" icon="fa-gavel" />
                 
-                <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-700 space-y-3 pb-6">
                    {!userStats.isPremium && (
                     <button 
                       onClick={() => { handleUpgrade(); setIsMenuOpen(false); }}
@@ -410,12 +536,20 @@ const App: React.FC = () => {
                     </button>
                    )}
                    {user ? (
-                     <button 
-                        onClick={handleLogout}
-                        className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2"
+                     <>
+                      <button 
+                        onClick={() => { openEditProfile(); setIsMenuOpen(false); }}
+                        className="w-full bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2"
                       >
-                        <i className="fas fa-sign-out-alt"></i> Sign Out
+                        <i className="fas fa-user-edit"></i> Edit Profile
                       </button>
+                      <button 
+                          onClick={handleLogout}
+                          className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2"
+                        >
+                          <i className="fas fa-sign-out-alt"></i> Sign Out
+                      </button>
+                     </>
                    ) : (
                       <button 
                         onClick={() => { handleNavigate(View.LOGIN); setIsMenuOpen(false); }}
@@ -430,13 +564,103 @@ const App: React.FC = () => {
         )}
       </nav>
 
+      {/* Edit Profile Modal */}
+      {isEditProfileOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-200 dark:border-gray-700">
+             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white">Edit Profile</h3>
+                <button onClick={() => setIsEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                   <i className="fas fa-times"></i>
+                </button>
+             </div>
+             
+             <div className="p-6">
+                <div className="flex flex-col items-center mb-6">
+                   <div className="relative group cursor-pointer" onClick={() => editFileInputRef.current?.click()}>
+                      <img 
+                         src={editProfileData.photoUrl} 
+                         alt="Profile" 
+                         className="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-gray-700 shadow-md" 
+                      />
+                      <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <i className="fas fa-camera text-white text-xl"></i>
+                      </div>
+                      <div className="absolute bottom-0 right-0 bg-patriot-blue text-white w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 border-white dark:border-gray-800 shadow-sm">
+                        <i className="fas fa-pen"></i>
+                      </div>
+                   </div>
+                   <input 
+                      type="file" 
+                      ref={editFileInputRef} 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={handleEditProfileFileChange}
+                   />
+                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Click to change photo</p>
+                </div>
+
+                <div className="space-y-4">
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                      <input 
+                         type="text" 
+                         value={editProfileData.name}
+                         onChange={(e) => setEditProfileData(prev => ({ ...prev, name: e.target.value }))}
+                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue outline-none"
+                      />
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                      <input 
+                         type="text" 
+                         value={user?.email}
+                         disabled
+                         className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                      />
+                   </div>
+                </div>
+             </div>
+
+             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 flex gap-3 justify-end border-t border-gray-100 dark:border-gray-700">
+                <button 
+                   onClick={() => setIsEditProfileOpen(false)}
+                   className="px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition"
+                >
+                   Cancel
+                </button>
+                <button 
+                   onClick={saveProfileChanges}
+                   className="px-6 py-2 rounded-lg bg-patriot-blue text-white font-bold hover:bg-blue-900 transition shadow-md"
+                >
+                   Save Changes
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative pb-[calc(2rem+env(safe-area-inset-bottom))]">
         {renderContent()}
       </main>
+      
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in">
+           <div className={`px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border ${
+              notification.type === 'success' 
+              ? 'bg-white dark:bg-gray-800 text-green-800 dark:text-green-300 border-green-100 dark:border-green-800' 
+              : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-700'
+           }`}>
+              <i className={`fas ${notification.type === 'success' ? 'fa-check-circle text-green-500' : 'fa-info-circle'}`}></i>
+              <span className="font-medium text-sm">{notification.message}</span>
+           </div>
+        </div>
+      )}
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors">
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
            <p>&copy; 2025 Citizen Achiever. Not affiliated with USCIS.</p>
            <div className="flex space-x-4 mt-4 md:mt-0">

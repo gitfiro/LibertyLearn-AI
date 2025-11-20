@@ -1,0 +1,22 @@
+{
+  "name": "Citizen Achiever: US Citizenship Tutor",
+  "short_name": "Citizen Achiever",
+  "description": "Master the US Citizenship test with AI tutoring and live mock interviews.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#B22234",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/321/321256.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/321/321256.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
