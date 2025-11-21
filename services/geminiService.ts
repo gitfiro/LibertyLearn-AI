@@ -73,9 +73,12 @@ export const getImmigrationNews = async (): Promise<GenerateContentResponse> => 
     const prompt = `Find the latest news regarding United States immigration, USCIS policy changes, and citizenship application updates from the last 7 days.
     
     Summarize the top 5 most important stories.
-    For each story, provide a Headline and a brief 2-3 sentence summary.
+    Return a JSON array where each object has the following fields:
+    - date: string (YYYY-MM-DD format)
+    - headline: string
+    - summary: string (2-3 sentences)
     
-    Do not include opinions, only facts from reputable news sources or government (.gov) websites.`;
+    Ensure the JSON is valid. Do not include Markdown formatting (like \`\`\`json).`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",

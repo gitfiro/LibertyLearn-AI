@@ -1,6 +1,6 @@
 {
-  "name": "Citizen Achiever: US Citizenship Tutor",
-  "short_name": "Citizen Achiever",
+  "name": "CivicPath Pro: US Citizenship Tutor",
+  "short_name": "CivicPath Pro",
   "description": "Master the US Citizenship test with AI tutoring and live mock interviews.",
   "start_url": "/",
   "display": "standalone",

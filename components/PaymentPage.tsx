@@ -93,10 +93,11 @@ const CheckoutForm: React.FC<{
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-1">Name on Card</label>
+        <label htmlFor="cardName" className="block text-sm font-bold text-gray-700 mb-1">Name on Card</label>
         <div className="relative">
-          <i className="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          <i className="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
           <input
+            id="cardName"
             type="text"
             required
             placeholder="John Doe"
@@ -108,15 +109,16 @@ const CheckoutForm: React.FC<{
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-1">Card Details</label>
+        <label htmlFor="card-element" className="block text-sm font-bold text-gray-700 mb-1">Card Details</label>
         <div className="p-3 border border-gray-300 rounded-lg bg-white focus-within:ring-2 focus-within:ring-patriot-blue focus-within:border-transparent transition-shadow">
-          <CardElement options={CARD_ELEMENT_OPTIONS} />
+          <CardElement id="card-element" options={CARD_ELEMENT_OPTIONS} />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-1">ZIP Code</label>
+        <label htmlFor="zip" className="block text-sm font-bold text-gray-700 mb-1">ZIP Code</label>
         <input
+          id="zip"
           type="text"
           required
           placeholder="12345"
@@ -127,8 +129,8 @@ const CheckoutForm: React.FC<{
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2">
-          <i className="fas fa-exclamation-circle"></i> {error}
+        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2" role="alert">
+          <i className="fas fa-exclamation-circle" aria-hidden="true"></i> {error}
         </div>
       )}
 
@@ -138,9 +140,9 @@ const CheckoutForm: React.FC<{
         className="w-full bg-patriot-blue hover:bg-blue-900 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.01] mt-6 flex justify-center items-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
       >
         {processing ? (
-          <><i className="fas fa-circle-notch fa-spin"></i> Processing Payment...</>
+          <><i className="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Processing Payment...</>
         ) : (
-          <><i className="fas fa-lock"></i> Pay ${price}</>
+          <><i className="fas fa-lock" aria-hidden="true"></i> Pay ${price}</>
         )}
       </button>
     </form>
@@ -170,12 +172,12 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onComplete, onCancel }) => {
   // Success View
   if (step === 'SUCCESS') {
     return (
-      <div className="max-w-md mx-auto py-20 px-4 text-center">
+      <div className="max-w-md mx-auto py-20 px-4 text-center" aria-live="polite">
         <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-          <i className="fas fa-check text-4xl text-green-600"></i>
+          <i className="fas fa-check text-4xl text-green-600" aria-hidden="true"></i>
         </div>
         <h2 className="text-3xl font-bold text-gray-800 mb-2">Payment Successful!</h2>
-        <p className="text-gray-600 mb-8">Welcome to Citizen Achiever Premium. Your account has been successfully upgraded.</p>
+        <p className="text-gray-600 mb-8">Welcome to CivicPath Pro Premium. Your account has been successfully upgraded.</p>
         <div className="flex justify-center">
           <div className="flex space-x-1">
             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
@@ -194,19 +196,20 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onComplete, onCancel }) => {
         <button
           onClick={() => setStep('SELECTION')}
           className="mb-6 text-gray-500 hover:text-patriot-blue font-medium flex items-center gap-2 transition-colors"
+          aria-label="Change Plan"
         >
-          <i className="fas fa-arrow-left"></i> Change Plan
+          <i className="fas fa-arrow-left" aria-hidden="true"></i> Change Plan
         </button>
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
           <div className="bg-gray-50 p-6 border-b border-gray-200">
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-xl font-bold text-gray-800">Secure Checkout</h2>
-              <p className="text-sm text-gray-500"><i className="fas fa-lock text-green-600 mr-1"></i> SSL Encrypted</p>
+              <p className="text-sm text-gray-500"><i className="fas fa-lock text-green-600 mr-1" aria-hidden="true"></i> SSL Encrypted</p>
             </div>
             <div className="flex justify-between items-center text-sm text-gray-600 mb-4">
               <span>Merchant</span>
-              <span className="font-medium text-gray-800">Citizen Achiever Inc.</span>
+              <span className="font-medium text-gray-800">CivicPath Pro Inc.</span>
             </div>
             <div className="text-right border-t border-gray-200 pt-4">
               <p className="text-sm text-gray-500">Total due</p>
@@ -217,7 +220,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onComplete, onCancel }) => {
           <div className="p-6 sm:p-8">
             <div className="mb-8 bg-blue-50 p-4 rounded-lg flex items-start gap-3 border border-blue-100">
               <div className="bg-white p-2 rounded shadow-sm text-patriot-blue">
-                <i className="fas fa-shopping-cart"></i>
+                <i className="fas fa-shopping-cart" aria-hidden="true"></i>
               </div>
               <div>
                 <h3 className="font-bold text-patriot-blue">{getPlanName()}</h3>
@@ -249,8 +252,9 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onComplete, onCancel }) => {
       <button
         onClick={onCancel}
         className="mb-6 text-gray-500 hover:text-patriot-blue font-medium flex items-center gap-2 transition-colors"
+        aria-label="Back to Dashboard"
       >
-        <i className="fas fa-arrow-left"></i> Back to Dashboard
+        <i className="fas fa-arrow-left" aria-hidden="true"></i> Back to Dashboard
       </button>
 
       <div className="text-center mb-12">
@@ -272,14 +276,15 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onComplete, onCancel }) => {
             <span className="text-gray-500 ml-2">/ 2 weeks</span>
           </div>
           <ul className="space-y-3 mb-8 text-gray-600 flex-1">
-            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500"></i> Unlimited Practice Quizzes</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500"></i> 24/7 AI Civics Tutor</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500"></i> Real-time Voice Interviews</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500"></i> Ad-free Experience</li>
+            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500" aria-hidden="true"></i> Unlimited Practice Quizzes</li>
+            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500" aria-hidden="true"></i> 24/7 AI Civics Tutor</li>
+            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500" aria-hidden="true"></i> Real-time Voice Interviews</li>
+            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500" aria-hidden="true"></i> Ad-free Experience</li>
           </ul>
           <button
             onClick={() => handleSelectPlan('biweekly')}
             className="w-full bg-white border-2 border-patriot-blue text-patriot-blue font-bold py-3 rounded-xl hover:bg-blue-50 transition-colors"
+            aria-label="Choose Bi-Weekly Plan for $5.99 per 2 weeks"
           >
             Choose Bi-Weekly
           </button>
@@ -299,14 +304,15 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onComplete, onCancel }) => {
             Save 17% compared to bi-weekly
           </p>
           <ul className="space-y-3 mb-8 text-gray-600 flex-1">
-            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red"></i> <strong>All Premium Features</strong></li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red"></i> Priority Support</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red"></i> Progress Tracking Analytics</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red"></i> Cancel Anytime</li>
+            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red" aria-hidden="true"></i> <strong>All Premium Features</strong></li>
+            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red" aria-hidden="true"></i> Priority Support</li>
+            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red" aria-hidden="true"></i> Progress Tracking Analytics</li>
+            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red" aria-hidden="true"></i> Cancel Anytime</li>
           </ul>
           <button
             onClick={() => handleSelectPlan('monthly')}
             className="w-full bg-gradient-to-r from-patriot-red to-red-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+            aria-label="Start Monthly Plan for $9.99 per month"
           >
             Start Monthly Plan
           </button>
@@ -314,8 +320,8 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onComplete, onCancel }) => {
       </div>
 
       <div className="text-center text-gray-400 text-sm space-y-2">
-        <p><i className="fas fa-lock"></i> Secure payment processing encrypted with SSL.</p>
-        <div className="flex justify-center gap-4 opacity-60">
+        <p><i className="fas fa-lock" aria-hidden="true"></i> Secure payment processing encrypted with SSL.</p>
+        <div className="flex justify-center gap-4 opacity-60" aria-hidden="true">
           <i className="fab fa-cc-visa fa-2x"></i>
           <i className="fab fa-cc-mastercard fa-2x"></i>
           <i className="fab fa-cc-amex fa-2x"></i>

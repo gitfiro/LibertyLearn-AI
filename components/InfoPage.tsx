@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { View } from '../types';
 
@@ -29,12 +30,12 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
           <div className="space-y-8 text-gray-700">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-patriot-blue">Frequently Asked Questions</h1>
-              <p className="text-gray-500 mt-2">Everything you need to know about Citizen Achiever</p>
+              <p className="text-gray-500 mt-2">Everything you need to know about CivicPath Pro</p>
             </div>
 
             <div className="space-y-6">
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <h3 className="text-lg font-bold text-patriot-blue mb-2">Is Citizen Achiever free?</h3>
+                <h3 className="text-lg font-bold text-patriot-blue mb-2">Is CivicPath Pro free?</h3>
                 <p>Yes! We offer a free tier that allows you to practice up to 5 questions every 12 hours. This is perfect for daily bite-sized study sessions. For unlimited access and advanced features like the Live Mock Interview, you can upgrade to Premium.</p>
               </div>
 
@@ -44,8 +45,8 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
               </div>
 
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <h3 className="text-lg font-bold text-patriot-blue mb-2">Can I use Citizen Achiever on my phone?</h3>
-                <p>Yes, Citizen Achiever is fully responsive and designed to work perfectly on smartphones and tablets. You can study on your commute, during lunch breaks, or anywhere you have an internet connection.</p>
+                <h3 className="text-lg font-bold text-patriot-blue mb-2">Can I use CivicPath Pro on my phone?</h3>
+                <p>Yes, CivicPath Pro is fully responsive and designed to work perfectly on smartphones and tablets. You can study on your commute, during lunch breaks, or anywhere you have an internet connection.</p>
               </div>
 
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
@@ -65,7 +66,7 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
 
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                 <h3 className="text-lg font-bold text-patriot-blue mb-2">What happens if I fail the real civics test?</h3>
-                <p>If you fail the civics test at your interview, USCIS usually gives you one more opportunity to take the test, typically within 60 to 90 days. Citizen Achiever is designed to help you pass on your first try by identifying your weak areas.</p>
+                <p>If you fail the civics test at your interview, USCIS usually gives you one more opportunity to take the test, typically within 60 to 90 days. CivicPath Pro is designed to help you pass on your first try by identifying your weak areas.</p>
               </div>
 
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
@@ -80,12 +81,37 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
 
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                 <h3 className="text-lg font-bold text-patriot-blue mb-2">Is this an official government website?</h3>
-                <p>No. Citizen Achiever is a private educational tool designed to help you study. We are not affiliated with USCIS or the US Government. For official forms and case status, please visit <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="text-patriot-blue underline font-bold">uscis.gov</a>.</p>
+                <p>No. CivicPath Pro is a private educational tool designed to help you study. We are not affiliated with USCIS or the US Government. For official forms and case status, please visit <a href="https://www.uscis.gov" target="_blank" rel="noopener noreferrer" className="text-patriot-blue underline font-bold">uscis.gov</a>.</p>
               </div>
 
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                 <h3 className="text-lg font-bold text-patriot-blue mb-2">Do you provide legal advice?</h3>
                 <p>No, we are strictly an educational platform. We do not provide legal advice. If you have complex legal questions regarding your immigration status, please use our "Find Attorney" feature to locate a qualified professional near you.</p>
+              </div>
+
+              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-bold text-patriot-blue mb-2">What is the 65/20 exemption for older applicants?</h3>
+                <p>If you are 65 years or older and have been a permanent resident for at least 20 years, you are eligible for a simplified test. You only need to study 20 specific questions instead of the full 100, and you may take the test in your native language.</p>
+              </div>
+
+              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-bold text-patriot-blue mb-2">Can I take the test in my native language?</h3>
+                <p>Most applicants must take the test in English. However, if you are 50+ with 20 years of residency (50/20 rule) or 55+ with 15 years of residency (55/15 rule), you may be exempt from the English requirement and can take the civics test in your language with an interpreter.</p>
+              </div>
+
+              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-bold text-patriot-blue mb-2">Does the AI tutor know about my specific case?</h3>
+                <p>No. The AI tutor is a general study aid trained on public civics information. It does not have access to your USCIS case files, A-Number, or personal history. Never share sensitive personal details like your Social Security Number with the chatbot.</p>
+              </div>
+
+              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-bold text-patriot-blue mb-2">How accurate is the AI mock interview?</h3>
+                <p>The AI simulates the format, tone, and content of a standard USCIS interview to help you practice listening and speaking. However, real officers vary in their personality and questioning style. Use the AI to build confidence, but remember it is a simulation.</p>
+              </div>
+
+              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-bold text-patriot-blue mb-2">What if I have a criminal record?</h3>
+                <p>If you have ever been arrested or detained, even if charges were dropped, it can affect your citizenship application. CivicPath Pro cannot assess your eligibility. We strongly recommend using the "Find Attorney" feature to consult a lawyer before applying.</p>
               </div>
             </div>
           </div>
@@ -98,7 +124,7 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
               <h1 className="text-3xl font-bold text-patriot-blue mb-2">Privacy Policy</h1>
               <p className="text-gray-500">Last Updated: January 1, 2025</p>
               <p className="mt-4">
-                At Citizen Achiever, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and application.
+                At CivicPath Pro, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and application.
               </p>
             </div>
             
@@ -114,7 +140,7 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">2. How We Process Voice Data (AI Technology)</h2>
-              <p className="mb-3">Citizen Achiever utilizes <strong>Google's Gemini API</strong> to power its AI features, including the Live Mock Interview and Chat Tutor.</p>
+              <p className="mb-3">CivicPath Pro utilizes <strong>Google's Gemini API</strong> to power its AI features, including the Live Mock Interview and Chat Tutor.</p>
               <ul className="list-disc pl-6 space-y-2 bg-blue-50 p-4 rounded-lg">
                 <li><strong>Transmission:</strong> When you use the Live Interview, your audio is streamed directly to Google's servers for processing.</li>
                 <li><strong>No Permanent Storage:</strong> We do not permanently store recording files of your interviews. The audio is processed in real-time to generate a response and then discarded.</li>
@@ -162,7 +188,7 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">8. Contact Us</h2>
-              <p>If you have questions or comments about this Privacy Policy, please contact us at <a href="mailto:support@citizenachiever.ai" className="text-patriot-blue font-bold">support@citizenachiever.ai</a>.</p>
+              <p>If you have questions or comments about this Privacy Policy, please contact us at <a href="mailto:support@civicpathpro.ai" className="text-patriot-blue font-bold">support@civicpathpro.ai</a>.</p>
             </section>
           </div>
         );
@@ -174,14 +200,14 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
               <h1 className="text-3xl font-bold text-patriot-blue mb-2">Terms of Service</h1>
               <p className="text-gray-500">Last Updated: January 1, 2025</p>
               <p className="mt-4 font-semibold text-red-600">
-                PLEASE READ THESE TERMS CAREFULLY. BY ACCESSING OR USING CITIZEN ACHIEVER, YOU AGREE TO BE BOUND BY THE TERMS DESCRIBED HEREIN.
+                PLEASE READ THESE TERMS CAREFULLY. BY ACCESSING OR USING CIVICPATH PRO, YOU AGREE TO BE BOUND BY THE TERMS DESCRIBED HEREIN.
               </p>
             </div>
 
             <section className="bg-yellow-50 p-6 rounded-xl border-l-4 border-yellow-500 shadow-sm">
-              <h2 className="text-xl font-bold text-yellow-900 mb-2"><i className="fas fa-exclamation-triangle mr-2"></i> IMPORTANT DISCLAIMERS</h2>
+              <h2 className="text-xl font-bold text-yellow-900 mb-2"><i className="fas fa-exclamation-triangle mr-2" aria-hidden="true"></i> IMPORTANT DISCLAIMERS</h2>
               <ul className="space-y-2 text-yellow-900">
-                <li><strong>NOT GOVERNMENT AFFILIATED:</strong> Citizen Achiever is a private educational tool. We are <strong>NOT</strong> affiliated with, endorsed by, or connected to USCIS, DHS, or the United States Government.</li>
+                <li><strong>NOT GOVERNMENT AFFILIATED:</strong> CivicPath Pro is a private educational tool. We are <strong>NOT</strong> affiliated with, endorsed by, or connected to USCIS, DHS, or the United States Government.</li>
                 <li><strong>NO LEGAL ADVICE:</strong> The content on this site is for informational and study purposes only. It does not constitute legal advice. Do not rely on this app for legal decisions regarding your immigration case.</li>
                 <li><strong>NO GUARANTEE OF RESULTS:</strong> Using this app does not guarantee that you will pass the US Naturalization Test. The actual test is administered by USCIS officers who have discretion in their questioning.</li>
               </ul>
@@ -189,7 +215,7 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">1. Description of Service</h2>
-              <p>Citizen Achiever ("Service") is an AI-powered study companion designed to assist users in preparing for the US Civics Test.</p>
+              <p>CivicPath Pro ("Service") is an AI-powered study companion designed to assist users in preparing for the US Civics Test.</p>
               <ul className="list-disc pl-6 mt-2 space-y-1">
                 <li><strong>AI Technology:</strong> The Service uses Artificial Intelligence (Google Gemini) to generate quizzes, simulate interviews, and provide tutoring.</li>
                 <li><strong>Automated Content:</strong> Questions, answers, and feedback are generated automatically. While we strive for accuracy, AI models can occasionally produce incorrect or outdated information ("Hallucinations").</li>
@@ -214,7 +240,7 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">4. Payment and Refunds</h2>
-              <p>Citizen Achiever offers Premium access via subscription.</p>
+              <p>CivicPath Pro offers Premium access via subscription.</p>
               <ul className="list-disc pl-6 mt-2 space-y-1">
                 <li><strong>Billing:</strong> Payments are processed securely by Stripe. We do not store payment details.</li>
                 <li><strong>Cancellation:</strong> You may cancel your subscription at any time via your profile settings. Access continues until the end of the billing cycle.</li>
@@ -224,14 +250,14 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">5. Intellectual Property</h2>
-              <p>The Service and its original content (excluding official USCIS questions which are public domain), features, and functionality are the exclusive property of Citizen Achiever. You may not copy, modify, distribute, or sell any part of our Service.</p>
+              <p>The Service and its original content (excluding official USCIS questions which are public domain), features, and functionality are the exclusive property of CivicPath Pro. You may not copy, modify, distribute, or sell any part of our Service.</p>
             </section>
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">6. Limitation of Liability</h2>
               <div className="bg-gray-100 p-4 rounded text-sm font-mono border border-gray-300">
                 <p className="uppercase">
-                  IN NO EVENT SHALL CITIZEN ACHIEVER, ITS DIRECTORS, EMPLOYEES, PARTNERS, AGENTS, SUPPLIERS, OR AFFILIATES, BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION, LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM (I) YOUR ACCESS TO OR USE OF OR INABILITY TO ACCESS OR USE THE SERVICE; (II) ANY CONDUCT OR CONTENT OF ANY THIRD PARTY ON THE SERVICE; (III) ANY CONTENT OBTAINED FROM THE SERVICE; AND (IV) UNAUTHORIZED ACCESS, USE OR ALTERATION OF YOUR TRANSMISSIONS OR CONTENT, WHETHER BASED ON WARRANTY, CONTRACT, TORT (INCLUDING NEGLIGENCE) OR ANY OTHER LEGAL THEORY, WHETHER OR NOT WE HAVE BEEN INFORMED OF THE POSSIBILITY OF SUCH DAMAGE.
+                  IN NO EVENT SHALL CIVICPATH PRO, ITS DIRECTORS, EMPLOYEES, PARTNERS, AGENTS, SUPPLIERS, OR AFFILIATES, BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION, LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM (I) YOUR ACCESS TO OR USE OF OR INABILITY TO ACCESS OR USE THE SERVICE; (II) ANY CONDUCT OR CONTENT OF ANY THIRD PARTY ON THE SERVICE; (III) ANY CONTENT OBTAINED FROM THE SERVICE; AND (IV) UNAUTHORIZED ACCESS, USE OR ALTERATION OF YOUR TRANSMISSIONS OR CONTENT, WHETHER BASED ON WARRANTY, CONTRACT, TORT (INCLUDING NEGLIGENCE) OR ANY OTHER LEGAL THEORY, WHETHER OR NOT WE HAVE BEEN INFORMED OF THE POSSIBILITY OF SUCH DAMAGE.
                 </p>
                 <p className="mt-4 uppercase font-bold">
                   IN NO EVENT SHALL OUR TOTAL LIABILITY TO YOU FOR ALL CLAIMS EXCEED THE AMOUNT YOU PAID US, IF ANY, FOR ACCESSING THE SERVICE DURING THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE DATE OF THE CLAIM.
@@ -241,7 +267,7 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">7. Indemnification</h2>
-              <p>You agree to defend, indemnify and hold harmless Citizen Achiever and its licensee and licensors, and their employees, contractors, agents, officers and directors, from and against any and all claims, damages, obligations, losses, liabilities, costs or debt, and expenses (including but not limited to attorney's fees), resulting from or arising out of a) your use and access of the Service, or b) a breach of these Terms.</p>
+              <p>You agree to defend, indemnify and hold harmless CivicPath Pro and its licensee and licensors, and their employees, contractors, agents, officers and directors, from and against any and all claims, damages, obligations, losses, liabilities, costs or debt, and expenses (including but not limited to attorney's fees), resulting from or arising out of a) your use and access of the Service, or b) a breach of these Terms.</p>
             </section>
 
             <section>
@@ -261,15 +287,15 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
           <div className="max-w-xl mx-auto">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-headset text-3xl text-patriot-blue"></i>
+                <i className="fas fa-headset text-3xl text-patriot-blue" aria-hidden="true"></i>
               </div>
               <h1 className="text-3xl font-bold text-patriot-blue mb-2">Contact Support</h1>
               <p className="text-gray-600">Have a question or issue? We're here to help you succeed.</p>
             </div>
 
             {isSubmitted ? (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-8 text-center animate-fade-in">
-                <i className="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
+              <div className="bg-green-50 border border-green-200 rounded-xl p-8 text-center animate-fade-in" aria-live="polite">
+                <i className="fas fa-check-circle text-5xl text-green-500 mb-4" aria-hidden="true"></i>
                 <h3 className="text-2xl font-bold text-gray-800 mb-2">Message Sent!</h3>
                 <p className="text-gray-600 mb-6">Thank you for reaching out. Our support team will get back to you at <strong>{formData.email}</strong> within 24 hours.</p>
                 <button 
@@ -282,8 +308,9 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
             ) : (
               <form onSubmit={handleSubmit} className="bg-white shadow-lg rounded-xl p-8 border border-gray-200">
                 <div className="mb-4">
-                  <label className="block text-gray-700 font-bold mb-2">Name</label>
+                  <label htmlFor="name" className="block text-gray-700 font-bold mb-2">Name</label>
                   <input
+                    id="name"
                     type="text"
                     required
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-patriot-blue focus:border-transparent outline-none"
@@ -294,8 +321,9 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block text-gray-700 font-bold mb-2">Email Address</label>
+                  <label htmlFor="email" className="block text-gray-700 font-bold mb-2">Email Address</label>
                   <input
+                    id="email"
                     type="email"
                     required
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-patriot-blue focus:border-transparent outline-none"
@@ -306,8 +334,9 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-gray-700 font-bold mb-2">Message</label>
+                  <label htmlFor="message" className="block text-gray-700 font-bold mb-2">Message</label>
                   <textarea
+                    id="message"
                     required
                     rows={4}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-patriot-blue focus:border-transparent outline-none resize-none"
@@ -323,15 +352,15 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
                   className="w-full bg-patriot-blue hover:bg-blue-900 text-white font-bold py-3 rounded-lg transition-all transform hover:scale-[1.01] flex justify-center items-center gap-2 disabled:opacity-70"
                 >
                   {isSubmitting ? (
-                    <><i className="fas fa-circle-notch fa-spin"></i> Sending...</>
+                    <><i className="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Sending...</>
                   ) : (
-                    <><i className="fas fa-paper-plane"></i> Send Message</>
+                    <><i className="fas fa-paper-plane" aria-hidden="true"></i> Send Message</>
                   )}
                 </button>
                 
                 <div className="mt-6 text-center">
                   <p className="text-sm text-gray-500">
-                    Or email us directly at <a href="mailto:support@citizenachiever.ai" className="text-patriot-blue font-bold hover:underline">support@citizenachiever.ai</a>
+                    Or email us directly at <a href="mailto:support@civicpathpro.ai" className="text-patriot-blue font-bold hover:underline">support@civicpathpro.ai</a>
                   </p>
                 </div>
               </form>
@@ -349,8 +378,9 @@ const InfoPage: React.FC<InfoPageProps> = ({ view, onBack }) => {
       <button 
         onClick={onBack}
         className="mb-6 text-gray-500 hover:text-patriot-blue font-medium flex items-center gap-2 transition-colors"
+        aria-label="Back to Dashboard"
       >
-        <i className="fas fa-arrow-left"></i> Back to Dashboard
+        <i className="fas fa-arrow-left" aria-hidden="true"></i> Back to Dashboard
       </button>
       
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 md:p-12">

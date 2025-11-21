@@ -58,7 +58,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
     // Mock Database Logic
     setTimeout(() => {
       try {
-        const storedUsers = JSON.parse(localStorage.getItem('citizenAchiever_users') || '{}');
+        const storedUsers = JSON.parse(localStorage.getItem('civicPathPro_users') || '{}');
         const normalizedEmail = email.toLowerCase().trim();
 
         if (isRegistering) {
@@ -78,7 +78,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
 
           // Save to mock DB
           storedUsers[normalizedEmail] = newUser;
-          localStorage.setItem('citizenAchiever_users', JSON.stringify(storedUsers));
+          localStorage.setItem('civicPathPro_users', JSON.stringify(storedUsers));
 
           setIsLoading(false);
           // Login with sanitized user object (exclude password)
@@ -117,9 +117,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
       {/* Back Button for Mobile/Desktop */}
       <button 
         onClick={() => onNavigate(View.LANDING)}
-        className="absolute top-4 left-4 z-50 text-white md:text-white bg-black/20 md:bg-transparent hover:bg-black/30 md:hover:bg-transparent px-3 py-1 rounded-full backdrop-blur-sm md:backdrop-blur-none transition flex items-center gap-2 font-medium"
+        className="absolute top-4 left-4 z-50 text-white md:text-white bg-black/20 md:bg-transparent hover:bg-black/30 md:hover:bg-transparent px-3 py-1 rounded-full backdrop-blur-sm md:backdrop-blur-none transition flex items-center gap-2 font-medium focus:outline-none focus:ring-2 focus:ring-white"
+        aria-label="Back to Home"
       >
-         <i className="fas fa-arrow-left"></i> Back to Home
+         <i className="fas fa-arrow-left" aria-hidden="true"></i> Back to Home
       </button>
 
       {/* Left Side - Hero */}
@@ -127,9 +128,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
         <div className="relative z-10 mt-12 md:mt-0">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-patriot-blue">
-              <i className="fas fa-star"></i>
+              <i className="fas fa-star" aria-hidden="true"></i>
             </div>
-            <span className="font-bold text-2xl text-white">Citizen <span className="text-red-400">Achiever</span></span>
+            <span className="font-bold text-2xl text-white">CivicPath <span className="text-red-400">Pro</span></span>
           </div>
           
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
@@ -138,7 +139,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
         </div>
 
         <div className="absolute top-0 right-0 -mr-20 -mt-20 opacity-10">
-           <i className="fas fa-flag-usa text-[400px] text-white"></i>
+           <i className="fas fa-flag-usa text-[400px] text-white" aria-hidden="true"></i>
         </div>
       </div>
 
@@ -154,8 +155,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
             </p>
 
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4 flex items-center gap-2">
-                <i className="fas fa-exclamation-circle"></i> {error}
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4 flex items-center gap-2" role="alert">
+                <i className="fas fa-exclamation-circle" aria-hidden="true"></i> {error}
               </div>
             )}
 
@@ -165,19 +166,26 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
                 <div className="animate-fade-in">
                   {/* Profile Picture Upload */}
                   <div className="flex justify-center mb-6">
-                    <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                    <div 
+                        className="relative group cursor-pointer" 
+                        onClick={() => fileInputRef.current?.click()}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+                        aria-label="Upload profile picture"
+                    >
                         <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-inner group-hover:border-patriot-blue transition-colors bg-gray-50">
                             {previewUrl ? (
                                 <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                    <i className="fas fa-camera text-2xl mb-1"></i>
+                                    <i className="fas fa-camera text-2xl mb-1" aria-hidden="true"></i>
                                     <span className="text-[10px] uppercase font-bold">Upload</span>
                                 </div>
                             )}
                         </div>
                         <div className="absolute bottom-0 right-0 bg-patriot-blue text-white w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 border-white shadow-md group-hover:scale-110 transition-transform">
-                            <i className="fas fa-plus"></i>
+                            <i className="fas fa-plus" aria-hidden="true"></i>
                         </div>
                     </div>
                     <input 
@@ -186,13 +194,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
                         className="hidden" 
                         accept="image/*"
                         onChange={handleFileChange}
+                        aria-hidden="true"
                     />
                   </div>
 
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Full Name</label>
+                  <label htmlFor="full-name" className="block text-xs font-bold text-gray-700 uppercase mb-1">Full Name</label>
                   <div className="relative">
-                    <i className="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <i className="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
                     <input 
+                      id="full-name"
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -205,10 +215,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
               )}
               
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Email Address</label>
+                <label htmlFor="email" className="block text-xs font-bold text-gray-700 uppercase mb-1">Email Address</label>
                 <div className="relative">
-                  <i className="fas fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <i className="fas fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
                   <input 
+                    id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -220,10 +231,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Password</label>
+                <label htmlFor="password" className="block text-xs font-bold text-gray-700 uppercase mb-1">Password</label>
                 <div className="relative">
-                  <i className="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <i className="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
                   <input 
+                    id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -240,9 +252,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigate }) => {
                 className="w-full bg-patriot-blue hover:bg-blue-900 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all transform active:scale-95 flex items-center justify-center gap-2"
               >
                 {isLoading && !error ? (
-                   <i className="fas fa-circle-notch fa-spin"></i>
+                   <i className="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
                 ) : (
-                   <i className={`fas ${isRegistering ? 'fa-user-plus' : 'fa-sign-in-alt'}`}></i>
+                   <i className={`fas ${isRegistering ? 'fa-user-plus' : 'fa-sign-in-alt'}`} aria-hidden="true"></i>
                 )}
                 {isLoading ? 'Processing...' : (isRegistering ? 'Create Account' : 'Sign In')}
               </button>

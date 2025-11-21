@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { searchAttorneys } from '../services/geminiService';
 
@@ -208,12 +209,20 @@ const FindAttorney: React.FC = () => {
       const normState = state.toLowerCase().trim();
       const normZip = zip.trim();
 
-      const isVirginia = normState === '' || normState.includes('va') || normState.includes('virginia');
+      // Strict Virginia check to exclude West Virginia
+      const isVirginia = (
+          normState === '' || 
+          normState === 'va' || 
+          normState === 'virginia' || 
+          (normState.includes('virginia') && !normState.includes('west'))
+      );
+
       const novaCities = [
         'arlington', 'alexandria', 'fairfax', 'falls church', 'manassas', 'mclean', 
         'reston', 'tysons', 'vienna', 'herndon', 'leesburg', 'ashburn', 'woodbridge', 
         'sterling', 'annandale', 'burke', 'centreville', 'chantilly', 'springfield', 'lorton', 
-        'northern virginia', 'nova'
+        'great falls', 'oakton', 'dunn loring', 'dumfries', 'triangle', 'clifton',
+        'northern virginia', 'nova', 'loudoun', 'prince william'
       ];
       
       const isNovaZip = normZip.length >= 3 && (
@@ -236,11 +245,11 @@ const FindAttorney: React.FC = () => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       if (i <= score) {
-        stars.push(<i key={i} className="fas fa-star text-yellow-400 text-sm"></i>);
+        stars.push(<i key={i} className="fas fa-star text-yellow-400 text-sm" aria-hidden="true"></i>);
       } else if (i - 0.5 <= score) {
-        stars.push(<i key={i} className="fas fa-star-half-alt text-yellow-400 text-sm"></i>);
+        stars.push(<i key={i} className="fas fa-star-half-alt text-yellow-400 text-sm" aria-hidden="true"></i>);
       } else {
-        stars.push(<i key={i} className="far fa-star text-gray-300 text-sm"></i>);
+        stars.push(<i key={i} className="far fa-star text-gray-300 text-sm" aria-hidden="true"></i>);
       }
     }
     return <div className="flex gap-0.5">{stars}</div>;
@@ -280,7 +289,7 @@ const FindAttorney: React.FC = () => {
         return (
             <div className="bg-white dark:bg-gray-800 p-10 rounded-xl shadow text-center border border-gray-200 dark:border-gray-700">
                 <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i className="fas fa-filter text-gray-400 text-2xl"></i>
+                    <i className="fas fa-filter text-gray-400 text-2xl" aria-hidden="true"></i>
                 </div>
                 <h3 className="text-lg font-bold text-gray-600 dark:text-gray-300">No results match your filters.</h3>
                 <button 
@@ -312,7 +321,7 @@ const FindAttorney: React.FC = () => {
                  )}
                  {item.isProBono && (
                     <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-bold px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
-                        <i className="fas fa-hand-holding-heart"></i> Pro Bono
+                        <i className="fas fa-hand-holding-heart" aria-hidden="true"></i> Pro Bono
                     </span>
                  )}
               </div>
@@ -324,9 +333,9 @@ const FindAttorney: React.FC = () => {
                    </h3>
                    
                    <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-gray-900 dark:bg-black text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                      <div className="bg-gray-900 dark:bg-black text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1" aria-label={`Rating: ${item.ratingScore} stars`}>
                          <span>{item.ratingScore > 0 ? item.ratingScore.toFixed(1) : 'N/A'}</span>
-                         <i className="fas fa-star text-yellow-400 text-[10px]"></i>
+                         <i className="fas fa-star text-yellow-400 text-[10px]" aria-hidden="true"></i>
                       </div>
                       {renderStars(item.ratingScore)}
                    </div>
@@ -336,7 +345,7 @@ const FindAttorney: React.FC = () => {
               <div className="text-gray-600 dark:text-gray-300 text-sm space-y-2 mt-3">
                  {item.bodyLines.map((line, lIdx) => (
                     <p key={lIdx} className={`leading-relaxed ${line.toLowerCase().includes('address') ? 'flex items-start gap-2 text-gray-500 dark:text-gray-400' : ''}`}>
-                        {line.toLowerCase().includes('address') && <i className="fas fa-map-marker-alt mt-1 text-gray-400 dark:text-gray-500"></i>}
+                        {line.toLowerCase().includes('address') && <i className="fas fa-map-marker-alt mt-1 text-gray-400 dark:text-gray-500" aria-hidden="true"></i>}
                         {line}
                     </p>
                  ))}
@@ -353,8 +362,9 @@ const FindAttorney: React.FC = () => {
                            ? 'bg-patriot-red text-white hover:bg-red-700 shadow-md' 
                            : 'bg-blue-50 dark:bg-blue-900/20 text-patriot-blue dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'
                        }`}
+                       aria-label={`Get directions to ${item.title} on Google Maps`}
                      >
-                       <i className="fas fa-map-marked-alt"></i> Get Directions
+                       <i className="fas fa-map-marked-alt" aria-hidden="true"></i> Get Directions
                      </a>
                   </div>
               )}
@@ -369,7 +379,7 @@ const FindAttorney: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden mb-8 transition-colors">
         <div className="bg-patriot-blue p-6 sm:p-8 text-center relative">
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10">
-              <i className="fas fa-balance-scale text-[300px] text-white absolute -top-10 -left-20"></i>
+              <i className="fas fa-balance-scale text-[300px] text-white absolute -top-10 -left-20" aria-hidden="true"></i>
           </div>
           <div className="relative z-10">
             <h1 className="text-3xl font-bold text-white mb-2">Find Immigration Legal Help</h1>
@@ -383,8 +393,9 @@ const FindAttorney: React.FC = () => {
           <form onSubmit={handleSearch} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">City</label>
+                <label htmlFor="city" className="block text-gray-700 dark:text-gray-300 font-bold mb-2">City</label>
                 <input
+                  id="city"
                   type="text"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="e.g. Fairfax"
@@ -393,8 +404,9 @@ const FindAttorney: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">State</label>
+                <label htmlFor="state" className="block text-gray-700 dark:text-gray-300 font-bold mb-2">State</label>
                 <input
+                  id="state"
                   type="text"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="e.g. Virginia"
@@ -403,8 +415,9 @@ const FindAttorney: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Zip Code</label>
+                <label htmlFor="zip" className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Zip Code</label>
                 <input
+                  id="zip"
                   type="text"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="e.g. 22031"
@@ -415,10 +428,11 @@ const FindAttorney: React.FC = () => {
               
               {/* Advanced Filters */}
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Language Preference</label>
+                <label htmlFor="language" className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Language Preference</label>
                 <div className="relative">
-                    <i className="fas fa-language absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500"></i>
+                    <i className="fas fa-language absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" aria-hidden="true"></i>
                     <input
+                    id="language"
                     type="text"
                     className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="e.g. Spanish, Creole"
@@ -428,10 +442,11 @@ const FindAttorney: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Case Type / Need</label>
+                <label htmlFor="caseType" className="block text-gray-700 dark:text-gray-300 font-bold mb-2">Case Type / Need</label>
                 <div className="relative">
-                    <i className="fas fa-folder-open absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500"></i>
+                    <i className="fas fa-folder-open absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" aria-hidden="true"></i>
                     <select
+                        id="caseType"
                         className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue focus:border-transparent appearance-none"
                         value={formData.caseType}
                         onChange={(e) => setFormData({...formData, caseType: e.target.value})}
@@ -444,14 +459,14 @@ const FindAttorney: React.FC = () => {
                         <option value="Family Visa">Family Visa</option>
                         <option value="Employment Visa">Employment Visa</option>
                     </select>
-                    <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-xs"></i>
+                    <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-xs" aria-hidden="true"></i>
                 </div>
               </div>
             </div>
 
             {error && (
-                <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg border border-red-200 dark:border-red-800 text-sm">
-                    <i className="fas fa-exclamation-circle mr-2"></i> {error}
+                <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg border border-red-200 dark:border-red-800 text-sm" role="alert">
+                    <i className="fas fa-exclamation-circle mr-2" aria-hidden="true"></i> {error}
                 </div>
             )}
 
@@ -459,12 +474,13 @@ const FindAttorney: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
+                aria-busy={loading}
                 className="bg-patriot-red hover:bg-red-700 text-white px-10 py-3 rounded-full font-bold text-lg shadow-lg transition-transform transform hover:scale-105 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <><i className="fas fa-circle-notch fa-spin"></i> {loadingMessage}</>
+                  <><i className="fas fa-circle-notch fa-spin" aria-hidden="true"></i> {loadingMessage}</>
                 ) : (
-                  <><i className="fas fa-search"></i> Search</>
+                  <><i className="fas fa-search" aria-hidden="true"></i> Search</>
                 )}
               </button>
             </div>
@@ -473,13 +489,14 @@ const FindAttorney: React.FC = () => {
       </div>
 
       {/* Results Section */}
+      <div aria-live="polite">
       {(rawResultText || mapLinks.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
             {/* Main Results List */}
             <div className="lg:col-span-2">
                  <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                      <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                        <i className="fas fa-list-ul text-patriot-blue dark:text-blue-300"></i> Search Results
+                        <i className="fas fa-list-ul text-patriot-blue dark:text-blue-300" aria-hidden="true"></i> Search Results
                      </h2>
                      
                      {/* Filter & Sort Controls */}
@@ -499,12 +516,13 @@ const FindAttorney: React.FC = () => {
                                 <select 
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value as 'default' | 'rating')}
+                                    aria-label="Sort attorneys"
                                     className="appearance-none bg-white dark:bg-gray-700 pl-3 pr-8 py-2 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-patriot-blue"
                                 >
                                     <option value="default">Default Sort</option>
                                     <option value="rating">Highest Rated</option>
                                 </select>
-                                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-xs"></i>
+                                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none text-xs" aria-hidden="true"></i>
                             </div>
                         </div>
                      )}
@@ -517,7 +535,7 @@ const FindAttorney: React.FC = () => {
             <div className="lg:col-span-1">
                 <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 sticky top-24 transition-colors">
                     <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                        <i className="fas fa-map-marked-alt text-patriot-red dark:text-red-400"></i> Verified Locations
+                        <i className="fas fa-map-marked-alt text-patriot-red dark:text-red-400" aria-hidden="true"></i> Verified Locations
                     </h3>
                     
                     {mapLinks.length === 0 ? (
@@ -541,20 +559,21 @@ const FindAttorney: React.FC = () => {
                                                 <span className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded uppercase tracking-wide">Google Maps</span>
                                             </div>
                                         </div>
-                                        <i className="fas fa-external-link-alt text-xs text-gray-400 dark:text-gray-500 group-hover:text-patriot-blue dark:group-hover:text-blue-300 mt-1"></i>
+                                        <i className="fas fa-external-link-alt text-xs text-gray-400 dark:text-gray-500 group-hover:text-patriot-blue dark:group-hover:text-blue-300 mt-1" aria-hidden="true"></i>
                                     </div>
                                 </a>
                             ))}
                         </div>
                     )}
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 leading-tight">
-                        <i className="fas fa-info-circle mr-1"></i>
+                        <i className="fas fa-info-circle mr-1" aria-hidden="true"></i>
                         Location data provided by Google Maps. Ratings and reviews are based on available public information.
                     </div>
                 </div>
             </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

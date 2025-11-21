@@ -2,7 +2,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getReadingSentence, evaluateReading } from '../services/geminiService';
 
-const ReadingTest: React.FC = () => {
+interface ReadingTestProps {
+  isPremium: boolean;
+  onUpgrade: () => void;
+}
+
+const ReadingTest: React.FC<ReadingTestProps> = ({ isPremium, onUpgrade }) => {
   const [sentence, setSentence] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -23,8 +28,10 @@ const ReadingTest: React.FC = () => {
   };
 
   useEffect(() => {
-    loadNewSentence();
-  }, []);
+    if (isPremium) {
+      loadNewSentence();
+    }
+  }, [isPremium]);
 
   const startRecording = async () => {
     try {
@@ -74,18 +81,38 @@ const ReadingTest: React.FC = () => {
     }
   };
 
+  if (!isPremium) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] py-12 px-4 sm:px-8 bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center transition-colors">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-6">
+          <i className="fas fa-book-reader text-3xl sm:text-4xl text-indigo-600 dark:text-indigo-400" aria-hidden="true"></i>
+        </div>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-3">Reading Test Locked</h2>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-8 max-w-md">
+          Practice reading English sentences aloud with AI-powered pronunciation feedback. Upgrade to Premium to access this feature.
+        </p>
+        <button
+          onClick={onUpgrade}
+          className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-3 rounded-full font-bold text-base sm:text-lg shadow-lg hover:scale-105 transition flex items-center justify-center gap-2"
+        >
+          <i className="fas fa-crown" aria-hidden="true"></i> Unlock Reading Test
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
           <div className="bg-gradient-to-r from-purple-600 to-indigo-700 p-8 text-white relative">
              <div className="relative z-10">
-                <h2 className="text-3xl font-bold mb-2"><i className="fas fa-book-reader mr-2"></i> Reading Test</h2>
+                <h2 className="text-3xl font-bold mb-2"><i className="fas fa-book-reader mr-2" aria-hidden="true"></i> Reading Test</h2>
                 <p className="text-purple-100">Read the sentence below clearly into your microphone.</p>
              </div>
-             <i className="fas fa-quote-right absolute -bottom-4 -right-4 text-8xl opacity-10"></i>
+             <i className="fas fa-quote-right absolute -bottom-4 -right-4 text-8xl opacity-10" aria-hidden="true"></i>
           </div>
 
-          <div className="p-8 flex flex-col items-center text-center min-h-[400px] justify-center">
+          <div className="p-8 flex flex-col items-center text-center min-h-[400px] justify-center" aria-live="polite">
              
              {isLoading ? (
                <div className="flex flex-col items-center gap-3">
@@ -104,13 +131,14 @@ const ReadingTest: React.FC = () => {
                  {!result && !isEvaluating && (
                    <button
                      onClick={isRecording ? stopRecording : startRecording}
+                     aria-label={isRecording ? "Stop Recording" : "Start Recording"}
                      className={`w-24 h-24 rounded-full flex items-center justify-center text-3xl shadow-lg transition-all transform hover:scale-105 ${
                        isRecording 
                        ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200' 
                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
                      }`}
                    >
-                     <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'}`}></i>
+                     <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'}`} aria-hidden="true"></i>
                    </button>
                  )}
 
@@ -133,7 +161,7 @@ const ReadingTest: React.FC = () => {
                         : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200'
                       }`}>
                          <div className="text-5xl mb-3">
-                           {result.correct ? <i className="fas fa-check-circle text-green-500"></i> : <i className="fas fa-times-circle text-red-500"></i>}
+                           {result.correct ? <i className="fas fa-check-circle text-green-500" aria-hidden="true"></i> : <i className="fas fa-times-circle text-red-500" aria-hidden="true"></i>}
                          </div>
                          <h4 className="text-xl font-bold mb-2">{result.correct ? "Excellent Reading!" : "Needs Improvement"}</h4>
                          <p className="text-lg">{result.feedback}</p>
@@ -142,20 +170,20 @@ const ReadingTest: React.FC = () => {
                       <div className="flex gap-3 justify-center">
                          {audioURL && (
                             <button onClick={() => new Audio(audioURL).play()} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 transition">
-                               <i className="fas fa-play mr-2"></i> My Recording
+                               <i className="fas fa-play mr-2" aria-hidden="true"></i> My Recording
                             </button>
                          )}
                          <button 
                            onClick={loadNewSentence}
                            className="px-6 py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow transition flex items-center gap-2"
                          >
-                           Next Sentence <i className="fas fa-arrow-right"></i>
+                           Next Sentence <i className="fas fa-arrow-right" aria-hidden="true"></i>
                          </button>
                       </div>
                    </div>
                  )}
 
-                 {isRecording && <p className="mt-4 text-red-500 font-bold animate-pulse">Recording... Tap to stop</p>}
+                 {isRecording && <p className="mt-4 text-red-500 font-bold animate-pulse" role="status">Recording... Tap to stop</p>}
                  {!isRecording && !result && !isEvaluating && <p className="mt-4 text-gray-400">Tap the microphone to begin</p>}
                </>
              )}

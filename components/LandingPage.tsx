@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View } from '../types';
 
@@ -9,13 +10,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 font-sans text-patriot-slate dark:text-gray-100 flex flex-col transition-colors">
       {/* Navigation */}
-      <nav className="w-full border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm sticky top-0 z-50">
+      <nav className="w-full border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <div className="w-10 h-10 bg-patriot-blue rounded-xl flex items-center justify-center text-white shadow-md transform transition hover:rotate-12">
               <i className="fas fa-star"></i>
             </div>
-            <span className="font-bold text-2xl text-patriot-blue dark:text-white tracking-tight">Citizen <span className="text-patriot-red">Achiever</span></span>
+            <span className="font-bold text-2xl text-patriot-blue dark:text-white tracking-tight">CivicPath <span className="text-patriot-red">Pro</span></span>
           </div>
           <div className="flex items-center gap-4">
             <button 
@@ -35,7 +36,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
       </nav>
 
       {/* Hero Section */}
-      <header className="flex-1 flex flex-col justify-center relative overflow-hidden pt-16 pb-24">
+      <header className="flex-1 flex flex-col justify-center relative overflow-hidden pt-36 pb-24">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full z-0 opacity-5 dark:opacity-10 pointer-events-none">
            <i className="fas fa-flag-usa text-[600px] absolute top-10 right-10 transform rotate-12 text-patriot-blue dark:text-white"></i>
         </div>
@@ -143,9 +144,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
             <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                    <i className="fas fa-star text-gray-600"></i>
-                   <span className="font-bold text-gray-300">Citizen Achiever</span>
+                   <span className="font-bold text-gray-300">CivicPath Pro</span>
                 </div>
-                <p className="text-xs text-gray-500">&copy; 2025 Citizen Achiever. Not affiliated with USCIS.</p>
+                <p className="text-xs text-gray-500">&copy; 2025 CivicPath Pro. Not affiliated with USCIS.</p>
             </div>
             <div className="flex gap-6 text-sm">
                <button onClick={() => onNavigate(View.FAQ)} className="hover:text-white transition">FAQ</button>

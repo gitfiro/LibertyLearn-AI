@@ -260,7 +260,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
      return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] py-12 px-4 sm:px-8 bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center transition-colors">
         <div className="w-20 h-20 sm:w-24 sm:h-24 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-6">
-          <i className="fas fa-microphone-alt-slash text-3xl sm:text-4xl text-patriot-red"></i>
+          <i className="fas fa-microphone-alt-slash text-3xl sm:text-4xl text-patriot-red" aria-hidden="true"></i>
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-3">Live Interview Locked</h2>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-8 max-w-md">
@@ -271,7 +271,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
           onClick={onUpgrade}
           className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-3 rounded-full font-bold text-base sm:text-lg shadow-lg hover:scale-105 transition flex items-center justify-center gap-2"
         >
-          <i className="fas fa-crown"></i> Unlock Live Interview
+          <i className="fas fa-crown" aria-hidden="true"></i> Unlock Live Interview
         </button>
       </div>
      );
@@ -282,14 +282,20 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
       
       {/* End Confirmation Modal */}
       {showEndConfirmation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" 
+            role="dialog" 
+            aria-modal="true"
+            aria-labelledby="modal-title"
+            aria-describedby="modal-desc"
+        >
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-sm w-full p-6 transform transition-all scale-100">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-exclamation-triangle text-2xl text-red-500 dark:text-red-400"></i>
+                <i className="fas fa-exclamation-triangle text-2xl text-red-500 dark:text-red-400" aria-hidden="true"></i>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">End Interview Session?</h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">
+              <h3 id="modal-title" className="text-xl font-bold text-gray-900 dark:text-white mb-2">End Interview Session?</h3>
+              <p id="modal-desc" className="text-gray-600 dark:text-gray-300 text-sm">
                 Are you sure you want to end the current practice session? This will disconnect the AI officer.
               </p>
             </div>
@@ -302,6 +308,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
               </button>
               <button
                 onClick={confirmEndSession}
+                autoFocus
                 className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
               >
                 End Session
@@ -313,7 +320,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
 
       <div className="mb-6 sm:mb-10 text-center w-full">
         <div className="w-20 h-20 sm:w-32 sm:h-32 bg-patriot-blue rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-blue-100 dark:ring-blue-900">
-          <i className={`fas fa-microphone-alt text-3xl sm:text-5xl transition-all duration-300 ${isConnected ? 'text-red-400 animate-pulse scale-110' : 'text-white'}`}></i>
+          <i className={`fas fa-microphone-alt text-3xl sm:text-5xl transition-all duration-300 ${isConnected ? 'text-red-400 animate-pulse scale-110' : 'text-white'}`} aria-hidden="true"></i>
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-patriot-blue dark:text-blue-300 mb-3">Mock Interview Simulator</h2>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-lg mx-auto leading-relaxed">
@@ -321,15 +328,18 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
         </p>
       </div>
 
-      <div className="mb-8 w-full max-w-md bg-white dark:bg-gray-700 p-5 rounded-xl shadow-md border border-gray-100 dark:border-gray-600 text-center transform transition-all">
+      <div className="mb-8 w-full max-w-md bg-white dark:bg-gray-700 p-5 rounded-xl shadow-md border border-gray-100 dark:border-gray-600 text-center transform transition-all" aria-live="polite">
         <p className={`font-mono text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-          <i className={`fas fa-circle text-[10px] mr-2 ${isConnected ? 'animate-pulse' : ''}`}></i>
+          <i className={`fas fa-circle text-[10px] mr-2 ${isConnected ? 'animate-pulse' : ''}`} aria-hidden="true"></i>
           {status}
         </p>
         <div className="h-3 bg-gray-100 dark:bg-gray-600 rounded-full overflow-hidden w-full ring-1 ring-gray-200 dark:ring-gray-500">
             <div 
                 className={`h-full transition-all duration-100 ${isConnected ? 'bg-gradient-to-r from-green-400 to-green-600' : 'bg-gray-300 dark:bg-gray-500'}`}
                 style={{ width: `${isConnected ? Math.max(5, volumeLevel * 100) : 0}%`}}
+                role="progressbar"
+                aria-label="Voice volume level"
+                aria-valuenow={volumeLevel * 100}
             ></div>
         </div>
       </div>
@@ -341,7 +351,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
             className="w-full sm:w-auto bg-patriot-blue hover:bg-blue-900 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3"
           >
             <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
-                <i className="fas fa-play text-sm"></i>
+                <i className="fas fa-play text-sm" aria-hidden="true"></i>
             </div>
             Start Interview
           </button>
@@ -351,7 +361,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
             className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3"
           >
             <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
-                <i className="fas fa-stop text-sm"></i>
+                <i className="fas fa-stop text-sm" aria-hidden="true"></i>
             </div>
              End Session
           </button>
@@ -359,7 +369,7 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
       </div>
       
       <div className="mt-auto pt-8 text-xs text-gray-400 flex flex-col sm:flex-row items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-         <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded-full font-bold"><i className="fas fa-bolt mr-1"></i> AI POWERED</span>
+         <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded-full font-bold"><i className="fas fa-bolt mr-1" aria-hidden="true"></i> AI POWERED</span>
          <span>Voice processing by Gemini Live API</span>
       </div>
     </div>
