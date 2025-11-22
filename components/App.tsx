@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, UserStats, UserProfile } from '../types';
 import Dashboard from './Dashboard';
 import Quiz from './Quiz';
+import Flashcards from './Flashcards';
 import ReadingTest from './ReadingTest';
 import WritingTest from './WritingTest';
 import LiveInterview from './LiveInterview';
@@ -328,6 +329,10 @@ const App: React.FC = () => {
             onUpgrade={handleUpgrade}
           />
         );
+      case View.FLASHCARDS:
+        return (
+          <Flashcards onComplete={() => handleNavigate(View.DASHBOARD)} />
+        );
       case View.READING:
         return (
           <ReadingTest 
@@ -419,10 +424,24 @@ const App: React.FC = () => {
     </button>
   );
 
+  const BottomNavItem = ({ view, label, icon }: { view: View, label: string, icon: string }) => (
+    <button
+      onClick={() => handleNavigate(view)}
+      className={`flex-1 flex flex-col items-center justify-center py-2 ${
+        currentView === view
+          ? 'text-patriot-blue dark:text-blue-300'
+          : 'text-gray-400 dark:text-gray-500'
+      }`}
+    >
+      <i className={`fas ${icon} text-lg mb-1 ${currentView === view ? 'transform scale-110' : ''}`} aria-hidden="true"></i>
+      <span className="text-[10px] font-medium">{label}</span>
+    </button>
+  );
+
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50 dark:bg-gray-900 font-sans text-patriot-slate dark:text-gray-100 transition-colors duration-200">
       
-      {/* Main Navigation Bar (Responsive) */}
+      {/* Main Navigation Bar (Desktop & Top Mobile Header) */}
       <nav className="bg-white dark:bg-gray-800 shadow-sm fixed top-0 left-0 right-0 w-full z-50 border-b border-gray-200 dark:border-gray-700 transition-colors pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -450,6 +469,7 @@ const App: React.FC = () => {
             <div className="hidden md:flex items-center space-x-1">
                <NavLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
                <NavLink view={View.QUIZ} label="Quiz" icon="fa-question-circle" />
+               <NavLink view={View.FLASHCARDS} label="Cards" icon="fa-clone" />
                <NavLink view={View.AI_TUTOR} label="AI Tutor" icon="fa-robot" isPremiumFeature={true} />
                <NavLink view={View.LIVE_INTERVIEW} label="Interview" icon="fa-microphone-alt" isPremiumFeature={true} />
                <NavLink view={View.NEWS} label="News" icon="fa-newspaper" />
@@ -531,27 +551,46 @@ const App: React.FC = () => {
                   </button>
                 )}
               </div>
-
-              {/* Mobile Hamburger Menu Trigger */}
-              <div className="md:hidden">
-                 <button 
-                     onClick={() => setIsMenuOpen(true)} 
-                     className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-patriot-blue"
-                     aria-label="Open menu"
-                     aria-expanded={isMenuOpen}
-                 >
-                     <i className="fas fa-bars text-xl" aria-hidden="true"></i>
-                 </button>
-              </div>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-[calc(6rem+env(safe-area-inset-top))]">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-[calc(6rem+env(safe-area-inset-top))] pb-24 md:pb-8">
         {renderContent()}
       </main>
+
+      {/* Mobile Bottom Navigation (Fixed & Pinned) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="flex justify-between items-center h-16 px-2">
+           <BottomNavItem view={View.DASHBOARD} label="Home" icon="fa-home" />
+           <BottomNavItem view={View.QUIZ} label="Quiz" icon="fa-list-alt" />
+
+           {/* Prominent Center Button */}
+           <div className="relative -top-6">
+              <button
+                onClick={() => handleNavigate(View.LIVE_INTERVIEW)}
+                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-gray-900 transition-transform active:scale-95 ${
+                  currentView === View.LIVE_INTERVIEW ? 'bg-patriot-blue text-white' : 'bg-patriot-red text-white'
+                }`}
+                aria-label="Start Live Interview"
+              >
+                 <i className="fas fa-microphone-alt text-xl" aria-hidden="true"></i>
+              </button>
+           </div>
+
+           <BottomNavItem view={View.FLASHCARDS} label="Cards" icon="fa-clone" />
+           <button
+             onClick={() => setIsMenuOpen(true)}
+             className="flex-1 flex flex-col items-center justify-center py-2 text-gray-400 dark:text-gray-500"
+             aria-label="Open full menu"
+           >
+              <i className="fas fa-bars text-lg mb-1" aria-hidden="true"></i>
+              <span className="text-[10px] font-medium">Menu</span>
+           </button>
+        </div>
+      </div>
 
       {/* Full Screen Mobile Menu Overlay */}
       {isMenuOpen && (
@@ -594,6 +633,7 @@ const App: React.FC = () => {
               <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-2 mb-2 px-2" role="heading" aria-level={3}>Practice</p>
               <MenuLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
               <MenuLink view={View.QUIZ} label="Civics Quiz" icon="fa-question-circle" />
+              <MenuLink view={View.FLASHCARDS} label="Flashcards" icon="fa-clone" />
               <MenuLink view={View.READING} label="Reading Test" icon="fa-book-reader" isPremium={true} />
               <MenuLink view={View.WRITING} label="Writing Test" icon="fa-pen-alt" isPremium={true} />
               

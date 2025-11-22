@@ -10,14 +10,24 @@ interface DashboardProps {
   onUpgrade: () => void;
 }
 
+// Define distinct colors for each topic
+const TOPIC_COLORS: Record<string, string> = {
+  'American Government': '#B22234', // Patriot Red
+  'American History': '#3C3B6E',    // Patriot Blue
+  'Integrated Civics': '#F59E0B',   // Amber
+  'Civic Duties': '#10B981',        // Emerald
+  'Mixed Review': '#8B5CF6'         // Violet
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrade }) => {
   const [isAlertExpanded, setIsAlertExpanded] = React.useState(false);
   
-  // Map data with detailed performance stats for the tooltip
+  // Map data with detailed performance stats for the tooltip and colors
   const data = Object.keys(stats.masteryByTopic).map(key => ({
     topic: key,
     score: stats.masteryByTopic[key],
-    details: stats.performanceByTopic?.[key] || { correct: 0, total: 0 }
+    details: stats.performanceByTopic?.[key] || { correct: 0, total: 0 },
+    color: TOPIC_COLORS[key] || '#6B7280'
   }));
 
   const FREE_LIMIT = 5;
@@ -29,17 +39,27 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
     if (active && payload && payload.length) {
       const item = payload[0].payload;
       return (
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 z-50">
-          <h4 className="font-bold text-patriot-blue dark:text-blue-300 mb-2 border-b border-gray-100 dark:border-gray-700 pb-1">{item.topic}</h4>
-          <div className="space-y-1">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 z-50 min-w-[200px]">
+          <h4 className="font-bold text-sm mb-3 border-b border-gray-100 dark:border-gray-700 pb-2" style={{ color: item.color }}>
+             {item.topic}
+          </h4>
+          <div className="space-y-2">
             <div className="flex items-center justify-between gap-4">
-               <span className="text-xs text-gray-500 dark:text-gray-400">Mastery</span>
-               <span className="font-bold text-patriot-red dark:text-red-400">{item.score}%</span>
+               <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">Mastery</span>
+               <span className="font-bold text-xl" style={{ color: item.color }}>{item.score}%</span>
             </div>
-            <div className="flex items-center justify-between gap-4">
-               <span className="text-xs text-gray-500 dark:text-gray-400">Correct</span>
-               <span className="font-medium text-gray-700 dark:text-gray-200">
-                 {item.details.total > 0 ? `${item.details.correct}/${item.details.total}` : 'N/A'}
+            
+            <div className="flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+               <span className="text-xs text-gray-500 dark:text-gray-400">Questions Answered</span>
+               <span className="font-mono font-bold text-gray-700 dark:text-gray-200">
+                 {item.details.total}
+               </span>
+            </div>
+            
+             <div className="flex items-center justify-between gap-4 px-2">
+               <span className="text-xs text-gray-500 dark:text-gray-400">Correct Answers</span>
+               <span className="font-mono font-medium text-gray-600 dark:text-gray-300">
+                 {item.details.correct}
                </span>
             </div>
           </div>
@@ -47,6 +67,43 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
       );
     }
     return null;
+  };
+
+  // Custom Dot for Radar Chart Data Points
+  const CustomDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    return (
+      <circle 
+        cx={cx} 
+        cy={cy} 
+        r={5} 
+        stroke={payload.color} 
+        strokeWidth={3} 
+        fill="#fff" 
+      />
+    );
+  };
+
+  // Custom Tick for Radar Axis Labels
+  const CustomTick = ({ payload, x, y, textAnchor, stroke, radius }: any) => {
+    const color = TOPIC_COLORS[payload.value] || '#6B7280';
+    return (
+      <g className="recharts-layer recharts-polar-angle-axis-tick">
+        <text
+          radius={radius}
+          stroke={stroke}
+          x={x}
+          y={y}
+          className="recharts-text recharts-polar-angle-axis-tick-value"
+          textAnchor={textAnchor}
+          fill={color}
+        >
+          <tspan x={x} dy="0.35em" fontSize="11" fontWeight="600" fill={color}>
+            {payload.value}
+          </tspan>
+        </text>
+      </g>
+    );
   };
 
   return (
@@ -141,7 +198,19 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                 <p className="text-sm text-gray-500 dark:text-gray-400">Master the 100 official questions.</p>
              </button>
 
-             {/* 2. Reading Test */}
+             {/* 2. Flashcards (New Feature) */}
+             <button 
+               onClick={() => onNavigate('FLASHCARDS')}
+               className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-orange-500 dark:hover:border-orange-400 transition-all text-left group active:scale-[0.98]"
+             >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center text-orange-600 dark:text-orange-400 text-xl mb-4 group-hover:scale-110 transition-transform">
+                   <i className="fas fa-clone" aria-hidden="true"></i>
+                </div>
+                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Flashcards</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Review quick facts.</p>
+             </button>
+
+             {/* 3. Reading Test */}
              <button 
                onClick={() => onNavigate('READING')}
                className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-indigo-500 dark:hover:border-indigo-400'}`}
@@ -155,24 +224,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                    <i className="fas fa-book-reader" aria-hidden="true"></i>
                 </div>
                 <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Reading Test</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Practice reading sentences aloud.</p>
-             </button>
-
-             {/* 3. Writing Test */}
-             <button 
-               onClick={() => onNavigate('WRITING')}
-               className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-teal-500 dark:hover:border-teal-400'}`}
-             >
-                 {!stats.isPremium && (
-                   <div className="absolute top-3 right-3 bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] px-2 py-1 rounded font-bold uppercase">
-                      <i className="fas fa-lock" aria-label="Locked feature"></i> Locked
-                   </div>
-                )}
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center text-teal-600 dark:text-teal-300 text-xl mb-4 group-hover:scale-110 transition-transform">
-                   <i className="fas fa-pen-alt" aria-hidden="true"></i>
-                </div>
-                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Writing Test</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Listen and type sentences.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Practice reading aloud.</p>
              </button>
 
              {/* 4. Live Interview */}
@@ -189,7 +241,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                    <i className="fas fa-microphone-alt" aria-hidden="true"></i>
                 </div>
                 <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Mock Interview</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Voice simulation with AI Officer.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">AI Voice Simulation.</p>
              </button>
           </div>
        </div>
@@ -279,8 +331,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                       />
                       <PolarAngleAxis 
                         dataKey="topic" 
-                        tick={{ fill: '#6B7280', fontSize: 11, fontWeight: 600 }} 
-                        tickLine={false}
+                        tick={<CustomTick />}
                       />
                       <PolarRadiusAxis 
                         angle={30} 
@@ -292,12 +343,13 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                         name="Mastery"
                         dataKey="score"
                         stroke="#B22234"
-                        strokeWidth={3}
+                        strokeWidth={2}
                         fill="#B22234"
                         fillOpacity={0.3}
                         isAnimationActive={true}
+                        dot={<CustomDot />}
                       />
-                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#B22234', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                      <Tooltip content={<CustomTooltip />} cursor={false} />
                     </RadarChart>
                  </ResponsiveContainer>
                  
