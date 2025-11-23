@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { UserStats, UserProfile } from '../types';
+import { UserStats, UserProfile, QuizCategory } from '../types';
 
 interface DashboardProps {
   stats: UserStats;
@@ -12,22 +12,30 @@ interface DashboardProps {
 
 // Define distinct colors for each topic
 const TOPIC_COLORS: Record<string, string> = {
-  'American Government': '#B22234', // Patriot Red
-  'American History': '#3C3B6E',    // Patriot Blue
-  'Integrated Civics': '#F59E0B',   // Amber
-  'Civic Duties': '#10B981',        // Emerald
-  'Mixed Review': '#8B5CF6'         // Violet
+  [QuizCategory.AMERICAN_GOVERNMENT]: '#B22234', // Patriot Red
+  [QuizCategory.AMERICAN_HISTORY]: '#3C3B6E',    // Patriot Blue
+  [QuizCategory.INTEGRATED_CIVICS]: '#F59E0B',   // Amber
+  [QuizCategory.CIVIC_DUTIES]: '#10B981',        // Emerald
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrade }) => {
   const [isAlertExpanded, setIsAlertExpanded] = React.useState(false);
   
+  // Use fixed categories to ensure the radar chart maintains a consistent shape
+  // even if the user hasn't practiced a specific topic yet.
+  const chartTopics = [
+    QuizCategory.AMERICAN_GOVERNMENT,
+    QuizCategory.AMERICAN_HISTORY,
+    QuizCategory.INTEGRATED_CIVICS,
+    QuizCategory.CIVIC_DUTIES
+  ];
+  
   // Map data with detailed performance stats for the tooltip and colors
-  const data = Object.keys(stats.masteryByTopic).map(key => ({
-    topic: key,
-    score: stats.masteryByTopic[key],
-    details: stats.performanceByTopic?.[key] || { correct: 0, total: 0 },
-    color: TOPIC_COLORS[key] || '#6B7280'
+  const data = chartTopics.map(topic => ({
+    topic,
+    score: stats.masteryByTopic[topic] || 0,
+    details: stats.performanceByTopic?.[topic] || { correct: 0, total: 0 },
+    color: TOPIC_COLORS[topic] || '#6B7280'
   }));
 
   const FREE_LIMIT = 5;
@@ -39,26 +47,30 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
     if (active && payload && payload.length) {
       const item = payload[0].payload;
       return (
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 z-50 min-w-[200px]">
-          <h4 className="font-bold text-sm mb-3 border-b border-gray-100 dark:border-gray-700 pb-2" style={{ color: item.color }}>
-             {item.topic}
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 z-50 min-w-[200px] animate-fade-in">
+          <h4 className="font-bold text-sm mb-3 border-b border-gray-100 dark:border-gray-700 pb-2 flex items-center gap-2">
+             <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }}></span>
+             <span className="text-gray-800 dark:text-white">{item.topic}</span>
           </h4>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-4">
                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">Mastery</span>
-               <span className="font-bold text-xl" style={{ color: item.color }}>{item.score}%</span>
+               <div className="flex items-baseline gap-1">
+                 <span className="font-bold text-xl" style={{ color: item.color }}>{item.score}</span>
+                 <span className="text-xs text-gray-400">%</span>
+               </div>
             </div>
             
             <div className="flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-               <span className="text-xs text-gray-500 dark:text-gray-400">Questions Answered</span>
+               <span className="text-xs text-gray-500 dark:text-gray-400">Questions</span>
                <span className="font-mono font-bold text-gray-700 dark:text-gray-200">
                  {item.details.total}
                </span>
             </div>
             
              <div className="flex items-center justify-between gap-4 px-2">
-               <span className="text-xs text-gray-500 dark:text-gray-400">Correct Answers</span>
-               <span className="font-mono font-medium text-gray-600 dark:text-gray-300">
+               <span className="text-xs text-gray-500 dark:text-gray-400">Correct</span>
+               <span className="font-mono font-medium text-green-600 dark:text-green-400">
                  {item.details.correct}
                </span>
             </div>
@@ -76,17 +88,20 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
       <circle 
         cx={cx} 
         cy={cy} 
-        r={5} 
+        r={4} 
         stroke={payload.color} 
-        strokeWidth={3} 
-        fill="#fff" 
+        strokeWidth={2} 
+        fill={payload.color} 
+        fillOpacity={1}
       />
     );
   };
 
-  // Custom Tick for Radar Axis Labels
+  // Custom Tick for Radar Axis Labels with text wrapping support
   const CustomTick = ({ payload, x, y, textAnchor, stroke, radius }: any) => {
     const color = TOPIC_COLORS[payload.value] || '#6B7280';
+    const words = payload.value.split(' ');
+    
     return (
       <g className="recharts-layer recharts-polar-angle-axis-tick">
         <text
@@ -97,10 +112,14 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
           className="recharts-text recharts-polar-angle-axis-tick-value"
           textAnchor={textAnchor}
           fill={color}
+          fontSize="11"
+          fontWeight="700"
         >
-          <tspan x={x} dy="0.35em" fontSize="11" fontWeight="600" fill={color}>
-            {payload.value}
-          </tspan>
+          {words.map((word: string, i: number) => (
+             <tspan x={x} dy={i === 0 ? "0.35em" : "1.2em"} key={i}>
+                {word}
+             </tspan>
+          ))}
         </text>
       </g>
     );
@@ -198,19 +217,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                 <p className="text-sm text-gray-500 dark:text-gray-400">Master the 100 official questions.</p>
              </button>
 
-             {/* 2. Flashcards (New Feature) */}
-             <button 
-               onClick={() => onNavigate('FLASHCARDS')}
-               className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-orange-500 dark:hover:border-orange-400 transition-all text-left group active:scale-[0.98]"
-             >
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center text-orange-600 dark:text-orange-400 text-xl mb-4 group-hover:scale-110 transition-transform">
-                   <i className="fas fa-clone" aria-hidden="true"></i>
-                </div>
-                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Flashcards</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Review quick facts.</p>
-             </button>
-
-             {/* 3. Reading Test */}
+             {/* 2. Reading Test */}
              <button 
                onClick={() => onNavigate('READING')}
                className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-indigo-500 dark:hover:border-indigo-400'}`}
@@ -227,7 +234,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                 <p className="text-sm text-gray-500 dark:text-gray-400">Practice reading aloud.</p>
              </button>
 
-             {/* 4. Live Interview */}
+             {/* 3. Live Interview */}
              <button 
                onClick={() => onNavigate('LIVE_INTERVIEW')}
                className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-patriot-red dark:hover:border-red-400'}`}
@@ -242,6 +249,23 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                 </div>
                 <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Mock Interview</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">AI Voice Simulation.</p>
+             </button>
+             
+             {/* 4. Writing Test */}
+             <button 
+               onClick={() => onNavigate('WRITING')}
+               className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-teal-500 dark:hover:border-teal-400'}`}
+             >
+                {!stats.isPremium && (
+                   <div className="absolute top-3 right-3 bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] px-2 py-1 rounded font-bold uppercase">
+                      <i className="fas fa-lock" aria-label="Locked feature"></i> Locked
+                   </div>
+                )}
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center text-teal-600 dark:text-teal-400 text-xl mb-4 group-hover:scale-110 transition-transform">
+                   <i className="fas fa-pen-alt" aria-hidden="true"></i>
+                </div>
+                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Writing Test</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Dictation practice.</p>
              </button>
           </div>
        </div>
@@ -291,9 +315,12 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
            </div>
 
            {/* Right Col: Radar Chart */}
-           <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors flex flex-col min-h-[350px]">
+           <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors flex flex-col min-h-[400px]">
                <div className="flex items-center justify-between mb-6">
-                 <h3 className="font-bold text-gray-800 dark:text-white text-lg">Topic Mastery</h3>
+                 <h3 className="font-bold text-gray-800 dark:text-white text-lg flex items-center gap-2">
+                    <i className="fas fa-crosshairs text-patriot-red dark:text-red-400"></i>
+                    Topic Mastery
+                 </h3>
                  {stats.totalQuestions > 0 && (
                     <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded-full font-medium">
                        Live Data
@@ -321,12 +348,12 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                       </tbody>
                    </table>
 
-                   <ResponsiveContainer width="100%" height={300}>
-                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
+                   <ResponsiveContainer width="100%" height={320}>
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
                       <PolarGrid 
                         gridType="polygon" 
                         stroke="#e5e7eb" 
-                        strokeDasharray="3 3" 
+                        strokeDasharray="4 4" 
                         className="dark:stroke-gray-700"
                       />
                       <PolarAngleAxis 
@@ -345,7 +372,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                         stroke="#B22234"
                         strokeWidth={2}
                         fill="#B22234"
-                        fillOpacity={0.3}
+                        fillOpacity={0.4}
                         isAnimationActive={true}
                         dot={<CustomDot />}
                       />
@@ -354,7 +381,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrad
                  </ResponsiveContainer>
                  
                  {stats.totalQuestions === 0 && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-[2px] rounded-xl text-center p-6">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-[2px] rounded-xl text-center p-6 z-10">
                         <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3 text-gray-400">
                            <i className="fas fa-chart-pie text-xl" aria-hidden="true"></i>
                         </div>

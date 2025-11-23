@@ -1,9 +1,9 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { View, UserStats, UserProfile } from '../types';
 import Dashboard from './Dashboard';
 import Quiz from './Quiz';
-import Flashcards from './Flashcards';
 import ReadingTest from './ReadingTest';
 import WritingTest from './WritingTest';
 import LiveInterview from './LiveInterview';
@@ -329,10 +329,6 @@ const App: React.FC = () => {
             onUpgrade={handleUpgrade}
           />
         );
-      case View.FLASHCARDS:
-        return (
-          <Flashcards onComplete={() => handleNavigate(View.DASHBOARD)} />
-        );
       case View.READING:
         return (
           <ReadingTest 
@@ -469,7 +465,6 @@ const App: React.FC = () => {
             <div className="hidden md:flex items-center space-x-1">
                <NavLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
                <NavLink view={View.QUIZ} label="Quiz" icon="fa-question-circle" />
-               <NavLink view={View.FLASHCARDS} label="Cards" icon="fa-clone" />
                <NavLink view={View.AI_TUTOR} label="AI Tutor" icon="fa-robot" isPremiumFeature={true} />
                <NavLink view={View.LIVE_INTERVIEW} label="Interview" icon="fa-microphone-alt" isPremiumFeature={true} />
                <NavLink view={View.NEWS} label="News" icon="fa-newspaper" />
@@ -580,7 +575,7 @@ const App: React.FC = () => {
               </button>
            </div>
 
-           <BottomNavItem view={View.FLASHCARDS} label="Cards" icon="fa-clone" />
+           <BottomNavItem view={View.AI_TUTOR} label="Tutor" icon="fa-robot" />
            <button
              onClick={() => setIsMenuOpen(true)}
              className="flex-1 flex flex-col items-center justify-center py-2 text-gray-400 dark:text-gray-500"
@@ -633,7 +628,6 @@ const App: React.FC = () => {
               <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-2 mb-2 px-2" role="heading" aria-level={3}>Practice</p>
               <MenuLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
               <MenuLink view={View.QUIZ} label="Civics Quiz" icon="fa-question-circle" />
-              <MenuLink view={View.FLASHCARDS} label="Flashcards" icon="fa-clone" />
               <MenuLink view={View.READING} label="Reading Test" icon="fa-book-reader" isPremium={true} />
               <MenuLink view={View.WRITING} label="Writing Test" icon="fa-pen-alt" isPremium={true} />
               
