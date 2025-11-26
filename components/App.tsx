@@ -14,6 +14,7 @@ import LoginPage from './LoginPage';
 import LandingPage from './LandingPage';
 import ChatTutor from './ChatTutor';
 import NewsPage from './NewsPage';
+import Flashcards from './Flashcards';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.LANDING);
@@ -372,6 +373,12 @@ const App: React.FC = () => {
             onCancel={() => handleNavigate(View.DASHBOARD)}
           />
         );
+      case View.FLASHCARDS:
+        return (
+          <Flashcards 
+            onComplete={() => handleNavigate(View.DASHBOARD)}
+          />
+        );
       case View.PRIVACY:
       case View.TERMS:
       case View.SUPPORT:
@@ -465,6 +472,7 @@ const App: React.FC = () => {
             <div className="hidden md:flex items-center space-x-1">
                <NavLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
                <NavLink view={View.QUIZ} label="Quiz" icon="fa-question-circle" />
+               <NavLink view={View.FLASHCARDS} label="Flashcards" icon="fa-layer-group" />
                <NavLink view={View.AI_TUTOR} label="AI Tutor" icon="fa-robot" isPremiumFeature={true} />
                <NavLink view={View.LIVE_INTERVIEW} label="Interview" icon="fa-microphone-alt" isPremiumFeature={true} />
                <NavLink view={View.NEWS} label="News" icon="fa-newspaper" />
@@ -628,6 +636,7 @@ const App: React.FC = () => {
               <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-2 mb-2 px-2" role="heading" aria-level={3}>Practice</p>
               <MenuLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
               <MenuLink view={View.QUIZ} label="Civics Quiz" icon="fa-question-circle" />
+              <MenuLink view={View.FLASHCARDS} label="Flashcards" icon="fa-layer-group" />
               <MenuLink view={View.READING} label="Reading Test" icon="fa-book-reader" isPremium={true} />
               <MenuLink view={View.WRITING} label="Writing Test" icon="fa-pen-alt" isPremium={true} />
               
@@ -761,15 +770,28 @@ const App: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-           <p>&copy; 2025 CivicPath Pro. Not affiliated with USCIS.</p>
-           <div className="flex space-x-4 mt-4 md:mt-0">
-              <button onClick={() => handleNavigate(View.FAQ)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">FAQ</button>
-              <button onClick={() => handleNavigate(View.PRIVACY)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Privacy</button>
-              <button onClick={() => handleNavigate(View.TERMS)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Terms</button>
-              <button onClick={() => handleNavigate(View.SUPPORT)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Contact Support</button>
-           </div>
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex flex-col items-center md:items-start gap-1">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-patriot-blue rounded flex items-center justify-center text-white text-xs">
+                            <i className="fas fa-star" aria-hidden="true"></i>
+                        </div>
+                        <span className="font-bold text-gray-900 dark:text-white">CivicPath Pro</span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                        &copy; 2025 CivicPath Pro. Not affiliated with USCIS.
+                    </p>
+                </div>
+                
+                <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-300">
+                    <button onClick={() => handleNavigate(View.FAQ)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">FAQ</button>
+                    <button onClick={() => handleNavigate(View.PRIVACY)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Privacy Policy</button>
+                    <button onClick={() => handleNavigate(View.TERMS)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Terms of Service</button>
+                    <button onClick={() => handleNavigate(View.SUPPORT)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Contact Support</button>
+                </div>
+            </div>
         </div>
       </footer>
     </div>

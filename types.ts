@@ -16,6 +16,7 @@ export enum View {
   TERMS = 'TERMS',
   SUPPORT = 'SUPPORT',
   FAQ = 'FAQ',
+  FLASHCARDS = 'FLASHCARDS',
 }
 
 export enum Difficulty {
@@ -57,6 +58,7 @@ export interface UserProfile {
   name: string;
   email: string;
   photoUrl: string;
+  isVerified?: boolean;
 }
 
 export interface UserStats {
