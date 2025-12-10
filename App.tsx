@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, UserStats, UserProfile } from './types';
+import { View, UserStats, UserProfile } from '../types';
 import Dashboard from './components/Dashboard';
 import Quiz from './components/Quiz';
 import ReadingTest from './components/ReadingTest';
@@ -13,8 +13,9 @@ import LoginPage from './components/LoginPage';
 import LandingPage from './components/LandingPage';
 import ChatTutor from './components/ChatTutor';
 import NewsPage from './components/NewsPage';
+import Flashcards from './components/Flashcards';
 
-const App: React.FC = () => {
+export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.LANDING);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -25,6 +26,7 @@ const App: React.FC = () => {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ name: '', photoUrl: '' });
   const editFileInputRef = useRef<HTMLInputElement>(null);
+  const editNameInputRef = useRef<HTMLInputElement>(null);
 
   const [user, setUser] = useState<UserProfile | null>(null);
   
@@ -291,13 +293,13 @@ const App: React.FC = () => {
         <LandingPage onNavigate={handleNavigate} />
         {/* Global Notification Toast */}
         {notification && (
-            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in">
+            <div role="alert" className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in">
             <div className={`px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border ${
                 notification.type === 'success' 
                 ? 'bg-white text-green-800 border-green-100' 
                 : 'bg-gray-900 text-white border-gray-700'
             }`}>
-                <i className={`fas ${notification.type === 'success' ? 'fa-check-circle text-green-500' : 'fa-info-circle'}`}></i>
+                <i className={`fas ${notification.type === 'success' ? 'fa-check-circle text-green-500' : 'fa-info-circle'}`} aria-hidden="true"></i>
                 <span className="font-medium text-sm">{notification.message}</span>
             </div>
             </div>
@@ -346,6 +348,7 @@ const App: React.FC = () => {
           <LiveInterview 
             isPremium={userStats.isPremium} 
             onUpgrade={handleUpgrade}
+            onExit={() => handleNavigate(View.DASHBOARD)}
           />
         );
       case View.AI_TUTOR:
@@ -366,8 +369,15 @@ const App: React.FC = () => {
       case View.PAYMENT:
         return (
           <PaymentPage 
+            user={user}
             onComplete={handlePaymentSuccess} 
             onCancel={() => handleNavigate(View.DASHBOARD)}
+          />
+        );
+      case View.FLASHCARDS:
+        return (
+          <Flashcards 
+            onComplete={() => handleNavigate(View.DASHBOARD)}
           />
         );
       case View.PRIVACY:
@@ -388,16 +398,17 @@ const App: React.FC = () => {
   const NavLink = ({ view, label, icon, isPremiumFeature = false }: { view: View, label: string, icon: string, isPremiumFeature?: boolean }) => (
     <button 
       onClick={() => handleNavigate(view)}
-      className={`flex items-center space-x-2 px-3 py-2 rounded-md transition text-sm font-medium ${
+      className={`flex items-center space-x-2 px-3 py-2 rounded-md transition text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-patriot-blue ${
         currentView === view 
           ? 'bg-blue-50 dark:bg-blue-900/30 text-patriot-blue dark:text-blue-300' 
           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-patriot-blue dark:hover:text-blue-300'
       }`}
+      aria-current={currentView === view ? 'page' : undefined}
     >
-      <i className={`fas ${icon} w-5 text-center`}></i>
+      <i className={`fas ${icon} w-5 text-center`} aria-hidden="true"></i>
       <span>{label}</span>
       {isPremiumFeature && !userStats.isPremium && (
-        <i className="fas fa-lock text-xs text-gray-400 dark:text-gray-500 ml-1"></i>
+        <i className="fas fa-lock text-xs text-gray-400 dark:text-gray-500 ml-1" aria-label="Locked feature"></i>
       )}
     </button>
   );
@@ -405,38 +416,50 @@ const App: React.FC = () => {
   const MenuLink = ({ view, label, icon, isPremium = false }: { view: View, label: string, icon: string, isPremium?: boolean }) => (
     <button 
       onClick={() => { handleNavigate(view); setIsMenuOpen(false); }}
-      className={`w-full flex items-center p-3 rounded-xl transition-colors ${currentView === view ? 'bg-blue-50 dark:bg-blue-900/20 text-patriot-blue dark:text-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}
+      className={`w-full flex items-center p-3 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-patriot-blue ${currentView === view ? 'bg-blue-50 dark:bg-blue-900/20 text-patriot-blue dark:text-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}
+      aria-current={currentView === view ? 'page' : undefined}
     >
       <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${currentView === view ? 'bg-white dark:bg-gray-800 shadow-sm' : 'bg-gray-100 dark:bg-gray-700'}`}>
-          <i className={`fas ${icon} ${currentView === view ? 'text-patriot-blue dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}></i>
+          <i className={`fas ${icon} ${currentView === view ? 'text-patriot-blue dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`} aria-hidden="true"></i>
       </div>
       <span className="font-medium flex-1 text-left">{label}</span>
-      {isPremium && !userStats.isPremium && <i className="fas fa-lock text-gray-400 text-xs"></i>}
-      <i className="fas fa-chevron-right text-gray-300 text-xs"></i>
+      {isPremium && !userStats.isPremium && <i className="fas fa-lock text-gray-400 text-xs" aria-label="Locked"></i>}
+      <i className="fas fa-chevron-right text-gray-300 text-xs" aria-hidden="true"></i>
     </button>
   );
 
-  const BottomNavItem = ({ view, label, icon, isActive = false }: { view: View, label: string, icon: string, isActive?: boolean }) => (
-     <button 
-        onClick={() => handleNavigate(view)} 
-        className={`flex-1 flex flex-col items-center justify-center py-1 ${currentView === view || isActive ? 'text-patriot-blue dark:text-blue-300' : 'text-gray-400 dark:text-gray-500 hover:text-patriot-blue dark:hover:text-blue-200'}`}
-     >
-        <i className={`fas ${icon} text-lg mb-1 ${currentView === view ? 'transform scale-110' : ''} transition-transform`}></i>
-        <span className="text-[10px] font-medium">{label}</span>
-     </button>
+  const BottomNavItem = ({ view, label, icon }: { view: View, label: string, icon: string }) => (
+    <button
+      onClick={() => handleNavigate(view)}
+      className={`flex-1 flex flex-col items-center justify-center py-2 ${
+        currentView === view
+          ? 'text-patriot-blue dark:text-blue-300'
+          : 'text-gray-400 dark:text-gray-500'
+      }`}
+    >
+      <i className={`fas ${icon} text-lg mb-1 ${currentView === view ? 'transform scale-110' : ''}`} aria-hidden="true"></i>
+      <span className="text-[10px] font-medium">{label}</span>
+    </button>
   );
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50 dark:bg-gray-900 font-sans text-patriot-slate dark:text-gray-100 transition-colors duration-200">
       
-      {/* Desktop Navigation Bar */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-700 transition-colors pt-[env(safe-area-inset-top)]">
+      {/* Main Navigation Bar (Desktop & Top Mobile Header) */}
+      <nav className="bg-white dark:bg-gray-800 shadow-sm fixed top-0 left-0 right-0 w-full z-50 border-b border-gray-200 dark:border-gray-700 transition-colors pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             {/* Logo */}
-            <div className="flex items-center cursor-pointer" onClick={() => handleNavigate(View.DASHBOARD)}>
+            <div 
+                className="flex items-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-patriot-blue rounded-lg p-1" 
+                onClick={() => handleNavigate(View.DASHBOARD)}
+                onKeyDown={(e) => e.key === 'Enter' && handleNavigate(View.DASHBOARD)}
+                tabIndex={0}
+                role="button"
+                aria-label="Go to Dashboard"
+            >
                <div className="flex items-center justify-center w-10 h-10 bg-patriot-blue rounded-lg mr-3 text-white shadow-sm">
-                 <i className="fas fa-star"></i>
+                 <i className="fas fa-star" aria-hidden="true"></i>
                </div>
                <div className="flex flex-col">
                  <span className="font-bold text-xl leading-none tracking-tight text-patriot-blue dark:text-white">CivicPath <span className="text-patriot-red">Pro</span></span>
@@ -446,143 +469,146 @@ const App: React.FC = () => {
                </div>
             </div>
 
-            {/* Desktop Menu (Simplified) */}
+            {/* Desktop Menu Links */}
             <div className="hidden md:flex items-center space-x-1">
                <NavLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
                <NavLink view={View.QUIZ} label="Quiz" icon="fa-question-circle" />
+               <NavLink view={View.FLASHCARDS} label="Flashcards" icon="fa-layer-group" />
                <NavLink view={View.AI_TUTOR} label="AI Tutor" icon="fa-robot" isPremiumFeature={true} />
                <NavLink view={View.LIVE_INTERVIEW} label="Interview" icon="fa-microphone-alt" isPremiumFeature={true} />
                <NavLink view={View.NEWS} label="News" icon="fa-newspaper" />
-               
-               <div className="ml-4 flex items-center gap-3 border-l border-gray-200 dark:border-gray-700 pl-4">
-                  <button
-                    onClick={toggleDarkMode}
-                    className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-400 flex items-center justify-center transition-colors hover:bg-gray-200 dark:hover:bg-gray-600"
-                  >
-                    <i className={`fas ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-                  </button>
-
-                  {!userStats.isPremium && (
-                    <button 
-                      onClick={handleUpgrade}
-                      className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white w-8 h-8 rounded-full shadow-md flex items-center justify-center transition-transform hover:scale-110"
-                    >
-                      <i className="fas fa-crown text-xs"></i>
-                    </button>
-                  )}
-                  
-                  {user ? (
-                    <div className="relative">
-                      <button 
-                        onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                        className="flex items-center gap-2 focus:outline-none"
-                      >
-                        <img 
-                          src={user.photoUrl} 
-                          alt={user.name} 
-                          className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-gray-600 object-cover"
-                        />
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[100px] truncate hidden lg:block">{user.name}</span>
-                        <i className="fas fa-chevron-down text-gray-400 text-xs"></i>
-                      </button>
-
-                      {isProfileMenuOpen && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-1 animate-fade-in z-50">
-                           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                              <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user.name}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
-                           </div>
-                           <button onClick={openEditProfile} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
-                              Edit Profile
-                           </button>
-                           <button onClick={handleUpgrade} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
-                              Billing Settings
-                           </button>
-                           <button onClick={() => handleNavigate(View.SUPPORT)} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
-                              Help & Support
-                           </button>
-                           <div className="border-t border-gray-100 dark:border-gray-700 mt-1">
-                             <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium">
-                                Sign Out
-                             </button>
-                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => handleNavigate(View.LOGIN)} 
-                      className="text-sm font-bold text-patriot-blue dark:text-blue-300 hover:underline"
-                    >
-                      Sign In
-                    </button>
-                  )}
-               </div>
             </div>
             
-            {/* Mobile Header Controls */}
-            <div className="md:hidden flex items-center gap-3">
-               <button
-                  onClick={toggleDarkMode}
-                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-400 flex items-center justify-center"
-                >
-                  <i className={`fas ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-               </button>
-               
-               {user ? (
-                 <button onClick={() => setIsMenuOpen(true)}>
-                     <img src={user.photoUrl} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-600" />
-                 </button>
-               ) : (
-                 <button 
-                   onClick={() => handleNavigate(View.LOGIN)}
-                   className="text-sm font-bold text-patriot-blue dark:text-blue-300"
-                 >
-                   Sign In
-                 </button>
-               )}
+            {/* Right Side Controls (Desktop & Mobile) */}
+            <div className="flex items-center gap-3">
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={toggleDarkMode}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-400 flex items-center justify-center transition-colors hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                <i className={`fas ${darkMode ? 'fa-sun' : 'fa-moon'}`} aria-hidden="true"></i>
+              </button>
+
+              {/* Desktop Upgrade Button */}
+              <div className="hidden md:block">
+                {!userStats.isPremium && (
+                  <button 
+                    onClick={handleUpgrade}
+                    className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white w-8 h-8 rounded-full shadow-md flex items-center justify-center transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                    aria-label="Upgrade to Premium"
+                  >
+                    <i className="fas fa-crown text-xs" aria-hidden="true"></i>
+                  </button>
+                )}
+              </div>
+              
+              {/* Desktop Profile Dropdown */}
+              <div className="hidden md:block">
+                {user ? (
+                  <div className="relative">
+                    <button 
+                      onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                      className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-patriot-blue rounded-full p-1"
+                      aria-expanded={isProfileMenuOpen}
+                      aria-haspopup="true"
+                      aria-label="User menu"
+                    >
+                      <img 
+                        src={user.photoUrl} 
+                        alt={user.name} 
+                        className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-gray-600 object-cover"
+                      />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[100px] truncate hidden lg:block">{user.name}</span>
+                      <i className="fas fa-chevron-down text-gray-400 text-xs" aria-hidden="true"></i>
+                    </button>
+
+                    {isProfileMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-1 animate-fade-in z-50" role="menu">
+                         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                            <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{user.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                         </div>
+                         <button onClick={openEditProfile} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" role="menuitem">
+                            Edit Profile
+                         </button>
+                         <button onClick={handleUpgrade} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" role="menuitem">
+                            Billing Settings
+                         </button>
+                         <button onClick={() => handleNavigate(View.SUPPORT)} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" role="menuitem">
+                            Help & Support
+                         </button>
+                         <div className="border-t border-gray-100 dark:border-gray-700 mt-1">
+                           <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium" role="menuitem">
+                              Sign Out
+                           </button>
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => handleNavigate(View.LOGIN)} 
+                    className="text-sm font-bold text-patriot-blue dark:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-patriot-blue rounded px-2 py-1"
+                  >
+                    Sign In
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content with Bottom Padding for Mobile */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative pb-24 md:pb-[calc(2rem+env(safe-area-inset-bottom))]">
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-[calc(6rem+env(safe-area-inset-top))] pb-24 md:pb-8">
         {renderContent()}
       </main>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-         <div className="flex justify-between items-center h-16 px-2">
-            <BottomNavItem view={View.DASHBOARD} label="Home" icon="fa-home" />
-            <BottomNavItem view={View.QUIZ} label="Quiz" icon="fa-list-alt" />
-            
-            {/* Floating Main Action (Interview) */}
-            <div className="relative -top-5">
-               <button 
-                 onClick={() => handleNavigate(View.LIVE_INTERVIEW)}
-                 className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-gray-900 transition-transform active:scale-95 ${currentView === View.LIVE_INTERVIEW ? 'bg-patriot-blue text-white' : 'bg-patriot-red text-white'}`}
-               >
-                  <i className="fas fa-microphone-alt text-xl"></i>
-               </button>
-            </div>
+      {/* Mobile Bottom Navigation (Fixed & Pinned) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="flex justify-between items-center h-16 px-2">
+           <BottomNavItem view={View.DASHBOARD} label="Home" icon="fa-home" />
+           <BottomNavItem view={View.QUIZ} label="Quiz" icon="fa-list-alt" />
 
-            <BottomNavItem view={View.AI_TUTOR} label="Tutor" icon="fa-robot" />
-            <button onClick={() => setIsMenuOpen(true)} className="flex-1 flex flex-col items-center justify-center py-1 text-gray-400 dark:text-gray-500 hover:text-patriot-blue dark:hover:text-blue-200">
-               <i className={`fas fa-bars text-lg mb-1`}></i>
-               <span className="text-[10px] font-medium">Menu</span>
-            </button>
-         </div>
+           {/* Prominent Center Button */}
+           <div className="relative -top-6">
+              <button
+                onClick={() => handleNavigate(View.LIVE_INTERVIEW)}
+                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-50 dark:border-gray-900 transition-transform active:scale-95 ${
+                  currentView === View.LIVE_INTERVIEW ? 'bg-patriot-blue text-white' : 'bg-patriot-red text-white'
+                }`}
+                aria-label="Start Live Interview"
+              >
+                 <i className="fas fa-microphone-alt text-xl" aria-hidden="true"></i>
+              </button>
+           </div>
+
+           <BottomNavItem view={View.AI_TUTOR} label="Tutor" icon="fa-robot" />
+           <button
+             onClick={() => setIsMenuOpen(true)}
+             className="flex-1 flex flex-col items-center justify-center py-2 text-gray-400 dark:text-gray-500"
+             aria-label="Open full menu"
+           >
+              <i className="fas fa-bars text-lg mb-1" aria-hidden="true"></i>
+              <span className="text-[10px] font-medium">Menu</span>
+           </button>
+        </div>
       </div>
 
       {/* Full Screen Mobile Menu Overlay */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-[60] bg-white dark:bg-gray-900 animate-fade-in flex flex-col md:hidden">
+        <div 
+            className="fixed inset-0 z-[60] bg-white dark:bg-gray-900 animate-fade-in flex flex-col md:hidden" 
+            role="dialog" 
+            aria-modal="true"
+            aria-label="Mobile Menu"
+        >
            {/* Menu Header */}
            <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-800">
               <h2 className="text-xl font-bold text-patriot-blue dark:text-white">Menu</h2>
-              <button onClick={() => setIsMenuOpen(false)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700">
-                 <i className="fas fa-times text-xl"></i>
+              <button onClick={() => setIsMenuOpen(false)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Close menu">
+                 <i className="fas fa-times text-xl" aria-hidden="true"></i>
               </button>
            </div>
            
@@ -590,13 +616,13 @@ const App: React.FC = () => {
               {/* User Info Card */}
               {user ? (
                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 flex items-center gap-4 mb-6 border border-gray-100 dark:border-gray-700">
-                    <img src={user.photoUrl} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
+                    <img src={user.photoUrl} alt="" className="w-12 h-12 rounded-full object-cover" aria-hidden="true" />
                     <div className="flex-1 min-w-0">
                        <p className="font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                     </div>
-                    <button onClick={openEditProfile} className="text-patriot-blue dark:text-blue-300">
-                       <i className="fas fa-pen"></i>
+                    <button onClick={openEditProfile} className="text-patriot-blue dark:text-blue-300" aria-label="Edit Profile">
+                       <i className="fas fa-pen" aria-hidden="true"></i>
                     </button>
                  </div>
               ) : (
@@ -608,17 +634,18 @@ const App: React.FC = () => {
               )}
 
               {/* Menu Links */}
-              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-2 mb-2 px-2">Practice</p>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-2 mb-2 px-2" role="heading" aria-level={3}>Practice</p>
               <MenuLink view={View.DASHBOARD} label="Dashboard" icon="fa-chart-pie" />
               <MenuLink view={View.QUIZ} label="Civics Quiz" icon="fa-question-circle" />
+              <MenuLink view={View.FLASHCARDS} label="Flashcards" icon="fa-layer-group" />
               <MenuLink view={View.READING} label="Reading Test" icon="fa-book-reader" isPremium={true} />
               <MenuLink view={View.WRITING} label="Writing Test" icon="fa-pen-alt" isPremium={true} />
               
-              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-6 mb-2 px-2">Premium Features</p>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-6 mb-2 px-2" role="heading" aria-level={3}>Premium Features</p>
               <MenuLink view={View.AI_TUTOR} label="AI Tutor" icon="fa-robot" isPremium={true} />
               <MenuLink view={View.LIVE_INTERVIEW} label="Live Mock Interview" icon="fa-microphone-alt" isPremium={true} />
               
-              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-6 mb-2 px-2">Resources</p>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-6 mb-2 px-2" role="heading" aria-level={3}>Resources</p>
               <MenuLink view={View.NEWS} label="Immigration News" icon="fa-newspaper" />
               <MenuLink view={View.FIND_ATTORNEY} label="Find an Attorney" icon="fa-gavel" />
               
@@ -627,7 +654,7 @@ const App: React.FC = () => {
                    onClick={() => { handleUpgrade(); setIsMenuOpen(false); }}
                    className="w-full mt-8 bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-4 rounded-xl font-bold shadow-md flex items-center justify-center gap-2"
                  >
-                   <i className="fas fa-crown"></i> Upgrade to Premium
+                   <i className="fas fa-crown" aria-hidden="true"></i> Upgrade to Premium
                  </button>
               )}
               
@@ -636,7 +663,7 @@ const App: React.FC = () => {
                    onClick={handleLogout}
                    className="w-full mt-6 p-4 text-red-500 font-bold flex items-center justify-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
                  >
-                   <i className="fas fa-sign-out-alt"></i> Sign Out
+                   <i className="fas fa-sign-out-alt" aria-hidden="true"></i> Sign Out
                  </button>
               )}
            </div>
@@ -645,28 +672,33 @@ const App: React.FC = () => {
 
       {/* Edit Profile Modal */}
       {isEditProfileOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+        <div 
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-profile-title"
+        >
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-200 dark:border-gray-700">
              <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                <h3 className="text-xl font-bold text-gray-800 dark:text-white">Edit Profile</h3>
-                <button onClick={() => setIsEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                   <i className="fas fa-times"></i>
+                <h3 id="edit-profile-title" className="text-xl font-bold text-gray-800 dark:text-white">Edit Profile</h3>
+                <button onClick={() => setIsEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close modal">
+                   <i className="fas fa-times" aria-hidden="true"></i>
                 </button>
              </div>
              
              <div className="p-6">
                 <div className="flex flex-col items-center mb-6">
-                   <div className="relative group cursor-pointer" onClick={() => editFileInputRef.current?.click()}>
+                   <div className="relative group cursor-pointer" onClick={() => editFileInputRef.current?.click()} role="button" aria-label="Change profile photo" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && editFileInputRef.current?.click()}>
                       <img 
                          src={editProfileData.photoUrl} 
                          alt="Profile" 
                          className="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-gray-700 shadow-md" 
                       />
                       <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                         <i className="fas fa-camera text-white text-xl"></i>
+                         <i className="fas fa-camera text-white text-xl" aria-hidden="true"></i>
                       </div>
                       <div className="absolute bottom-0 right-0 bg-patriot-blue text-white w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 border-white dark:border-gray-800 shadow-sm">
-                        <i className="fas fa-pen"></i>
+                        <i className="fas fa-pen" aria-hidden="true"></i>
                       </div>
                    </div>
                    <input 
@@ -675,23 +707,28 @@ const App: React.FC = () => {
                       className="hidden" 
                       accept="image/*"
                       onChange={handleEditProfileFileChange}
+                      aria-label="Upload profile photo"
                    />
                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Click to change photo</p>
                 </div>
 
                 <div className="space-y-4">
                    <div>
-                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                      <label htmlFor="edit-name" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
                       <input 
+                         id="edit-name"
                          type="text" 
+                         ref={editNameInputRef}
+                         autoFocus
                          value={editProfileData.name}
                          onChange={(e) => setEditProfileData(prev => ({ ...prev, name: e.target.value }))}
                          className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-patriot-blue outline-none"
                       />
                    </div>
                    <div>
-                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                      <label htmlFor="edit-email" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email</label>
                       <input 
+                         id="edit-email"
                          type="text" 
                          value={user?.email}
                          disabled
@@ -721,32 +758,43 @@ const App: React.FC = () => {
 
       {/* Notification Toast */}
       {notification && (
-        <div className="fixed bottom-20 md:bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in w-full max-w-md px-4">
+        <div role="alert" className="fixed bottom-20 md:bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in w-full max-w-md px-4">
            <div className={`px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border justify-center ${
               notification.type === 'success' 
               ? 'bg-white dark:bg-gray-800 text-green-800 dark:text-green-300 border-green-100 dark:border-green-800' 
               : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-700'
            }`}>
-              <i className={`fas ${notification.type === 'success' ? 'fa-check-circle text-green-500' : 'fa-info-circle'}`}></i>
+              <i className={`fas ${notification.type === 'success' ? 'fa-check-circle text-green-500' : 'fa-info-circle'}`} aria-hidden="true"></i>
               <span className="font-medium text-sm">{notification.message}</span>
            </div>
         </div>
       )}
 
-      {/* Footer (Hidden on Mobile due to Bottom Nav, shown on Desktop) */}
-      <footer className="hidden md:block bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-           <p>&copy; 2025 CivicPath Pro. Not affiliated with USCIS.</p>
-           <div className="flex space-x-4 mt-4 md:mt-0">
-              <button onClick={() => handleNavigate(View.FAQ)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">FAQ</button>
-              <button onClick={() => handleNavigate(View.PRIVACY)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Privacy</button>
-              <button onClick={() => handleNavigate(View.TERMS)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Terms</button>
-              <button onClick={() => handleNavigate(View.SUPPORT)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Contact Support</button>
-           </div>
+      {/* Footer */}
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex flex-col items-center md:items-start gap-1">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-patriot-blue rounded flex items-center justify-center text-white text-xs">
+                            <i className="fas fa-star" aria-hidden="true"></i>
+                        </div>
+                        <span className="font-bold text-gray-900 dark:text-white">CivicPath Pro</span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                        &copy; 2025 CivicPath Pro. Not affiliated with USCIS.
+                    </p>
+                </div>
+                
+                <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-300">
+                    <button onClick={() => handleNavigate(View.FAQ)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">FAQ</button>
+                    <button onClick={() => handleNavigate(View.PRIVACY)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Privacy Policy</button>
+                    <button onClick={() => handleNavigate(View.TERMS)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Terms of Service</button>
+                    <button onClick={() => handleNavigate(View.SUPPORT)} className="hover:text-patriot-blue dark:hover:text-blue-300 transition-colors">Contact Support</button>
+                </div>
+            </div>
         </div>
       </footer>
     </div>
   );
 };
-
-export default App;

@@ -63,8 +63,14 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
     // 2. Shuffle
     const shuffled = [...pool].sort(() => 0.5 - Math.random());
 
-    // 3. Slice to requested count (handle if pool is smaller than count)
-    const selected = shuffled.slice(0, Math.min(questionCount, pool.length));
+    // 3. Enforce Limit for Free Users
+    let effectiveCount = questionCount;
+    if (!isPremium && effectiveCount > 5) {
+        effectiveCount = 5;
+    }
+
+    // 4. Slice to requested count
+    const selected = shuffled.slice(0, Math.min(effectiveCount, pool.length));
 
     setQuestions(selected);
     setCurrentIndex(0);
@@ -115,7 +121,7 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
 
   if (isLimitReached && !quizStarted) {
      return (
-      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-10 rounded-xl shadow-lg text-center border border-gray-200 dark:border-gray-700 transition-colors">
+      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-10 rounded-xl shadow-lg text-center border border-gray-200 dark:border-gray-700 transition-colors mt-8">
          <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
             <i className="fas fa-hourglass-end" aria-hidden="true"></i>
          </div>
@@ -138,7 +144,7 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
 
   if (!quizStarted) {
     return (
-      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-xl shadow-md border-t-4 border-patriot-blue transition-colors flex flex-col">
+      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-xl shadow-md transition-colors flex flex-col mt-4">
         
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 w-full">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white leading-tight">Customize Your Practice</h2>
@@ -175,29 +181,37 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
         <div className="mb-8">
           <label id="count-label" className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Number of Questions</label>
           <div role="group" aria-labelledby="count-label" className="flex flex-wrap gap-3">
-            {[5, 10, 20, 50].map((count) => (
+            {[5, 10, 20, 50].map((count) => {
+              const locked = !isPremium && count > 5;
+              return (
               <button
                 key={count}
-                onClick={() => setQuestionCount(count)}
+                onClick={() => !locked && setQuestionCount(count)}
+                disabled={locked}
                 aria-pressed={questionCount === count}
                 className={`flex-1 min-w-[80px] p-3 rounded-lg border text-center transition-all font-medium ${
                   questionCount === count
                   ? 'border-patriot-blue bg-blue-50 dark:bg-blue-900/30 text-patriot-blue dark:text-blue-300 ring-2 ring-patriot-blue'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-gray-500 text-gray-600 dark:text-gray-300'
+                  : locked
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-gray-500 text-gray-600 dark:text-gray-300'
                 }`}
               >
-                {count}
+                {count} {locked && <i className="fas fa-lock ml-1 text-xs"></i>}
               </button>
-            ))}
+            )})}
           </div>
-          {!isPremium && questionCount > 5 && (
-             <p className="text-xs text-orange-500 mt-2"><i className="fas fa-exclamation-triangle" aria-hidden="true"></i> Free plan limited to 5 questions.</p>
+          {!isPremium && (
+             <p className="text-xs text-gray-500 mt-2 flex items-center">
+                <i className="fas fa-info-circle mr-1" aria-hidden="true"></i> 
+                Unlock Premium to practice with more questions.
+             </p>
           )}
         </div>
 
         <button
           onClick={startQuiz}
-          className="w-full bg-patriot-red text-white py-3 rounded-lg font-bold text-lg shadow-md hover:bg-red-700 transition-colors flex justify-center items-center gap-2"
+          className="w-full bg-[#1a237e] text-white py-3 rounded-lg font-bold text-lg shadow-md hover:bg-blue-900 transition-colors flex justify-center items-center gap-2"
         >
           Start Quiz
         </button>
@@ -215,31 +229,36 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
   const currentQ = questions[currentIndex];
 
   return (
-    <div className="max-w-3xl mx-auto relative pb-32">
+    <div className="max-w-3xl mx-auto relative pb-32 pt-6">
       {/* Progress Bar */}
-      <div className="mb-6 flex items-center justify-between text-sm font-medium text-gray-500 dark:text-gray-400">
+      <div className="mb-6 flex items-center justify-between text-sm font-medium text-gray-500 dark:text-gray-400 px-4">
         <span className="flex items-center gap-2">
           <span>Question {currentIndex + 1} of {questions.length}</span>
         </span>
         <span>Score: {score}</span>
       </div>
-      <div 
-        className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-8"
-        role="progressbar" 
-        aria-valuenow={((currentIndex) / questions.length) * 100} 
-        aria-valuemin={0} 
-        aria-valuemax={100}
-        aria-label="Quiz progress"
-      >
+      <div className="px-4">
         <div 
-          className="bg-patriot-blue h-2 rounded-full transition-all duration-500" 
-          style={{ width: `${((currentIndex) / questions.length) * 100}%` }}
-        ></div>
+            className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-8 overflow-hidden"
+            role="progressbar" 
+            aria-valuenow={((currentIndex + 1) / questions.length) * 100} 
+            aria-valuemin={0} 
+            aria-valuemax={100}
+            aria-label="Quiz progress"
+        >
+            <div 
+            className="bg-[#1a237e] h-2.5 rounded-full transition-all duration-500 ease-out" 
+            style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+            ></div>
+        </div>
       </div>
 
       {/* Question Card */}
-      <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-xl shadow-lg mb-6 relative overflow-hidden transition-colors">
-        <span className="inline-block bg-blue-100 dark:bg-blue-900/40 text-patriot-blue dark:text-blue-300 text-xs px-2 py-1 rounded mb-3 font-bold uppercase tracking-wider">
+      <div 
+        key={currentIndex}
+        className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-xl shadow-lg mb-6 relative overflow-hidden transition-all animate-fade-in mx-4"
+      >
+        <span className="inline-block bg-blue-100 dark:bg-blue-900/40 text-[#1a237e] dark:text-blue-300 text-xs px-2 py-1 rounded mb-3 font-bold uppercase tracking-wider">
           {currentQ.category}
         </span>
         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-6">
@@ -289,7 +308,7 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
               <div className="flex items-start gap-3">
                 <i className="fas fa-lightbulb text-yellow-500 text-xl mt-1" aria-hidden="true"></i>
                 <div>
-                    <h4 className="font-bold text-patriot-blue dark:text-blue-300 mb-1">Explanation</h4>
+                    <h4 className="font-bold text-[#1a237e] dark:text-blue-300 mb-1">Explanation</h4>
                     <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{currentQ.explanation}</p>
                 </div>
               </div>
@@ -299,11 +318,11 @@ const Quiz: React.FC<QuizProps> = ({ onComplete, isPremium, questionsInWindow, w
       </div>
 
       {showExplanation && (
-         <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex justify-center z-[60] transition-colors shadow-2xl">
+         <div className="fixed bottom-16 left-0 right-0 p-4 flex justify-center z-40">
             <button 
               onClick={nextQuestion}
               autoFocus
-              className="bg-patriot-blue text-white px-12 py-3 rounded-full font-bold shadow-lg hover:bg-blue-900 transition-transform hover:scale-105 flex items-center gap-2"
+              className="bg-[#1a237e] text-white px-12 py-3 rounded-full font-bold shadow-xl hover:bg-blue-900 transition-transform hover:scale-105 flex items-center gap-2"
             >
               {currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question'} <i className="fas fa-arrow-right" aria-hidden="true"></i>
             </button>

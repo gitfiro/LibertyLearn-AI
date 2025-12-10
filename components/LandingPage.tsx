@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from '../types';
 
 interface LandingPageProps {
@@ -7,155 +7,87 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
+
+  const handleStart = () => {
+    if (state && zip) {
+      localStorage.setItem('civicPath_location', JSON.stringify({ state, zip }));
+    }
+    onNavigate(View.DASHBOARD);
+  };
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 font-sans text-patriot-slate dark:text-gray-100 flex flex-col transition-colors">
-      {/* Navigation */}
-      <nav className="w-full border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm fixed top-0 left-0 right-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-10 h-10 bg-patriot-blue rounded-xl flex items-center justify-center text-white shadow-md transform transition hover:rotate-12">
-              <i className="fas fa-star"></i>
-            </div>
-            <span className="font-bold text-2xl text-patriot-blue dark:text-white tracking-tight">CivicPath <span className="text-patriot-red">Pro</span></span>
-          </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => onNavigate(View.LOGIN)} 
-              className="text-gray-600 dark:text-gray-300 font-semibold hover:text-patriot-blue dark:hover:text-white transition hidden sm:block"
-            >
-              Sign In
-            </button>
-            <button 
-              onClick={() => onNavigate(View.LOGIN)} 
-              className="bg-patriot-blue text-white px-6 py-2.5 rounded-full font-bold shadow-lg hover:bg-blue-900 hover:shadow-xl transition-all transform hover:-translate-y-0.5"
-            >
-              Get Started
-            </button>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-[#1a237e] font-sans text-white flex flex-col relative overflow-hidden">
+      {/* Background Flag Effect */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none">
+         <i className="fas fa-flag-usa text-[800px] absolute top-[-100px] -right-[200px] text-white transform rotate-12"></i>
+      </div>
 
-      {/* Hero Section */}
-      <header className="flex-1 flex flex-col justify-center relative overflow-hidden pt-36 pb-24">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full z-0 opacity-5 dark:opacity-10 pointer-events-none">
-           <i className="fas fa-flag-usa text-[600px] absolute top-10 right-10 transform rotate-12 text-patriot-blue dark:text-white"></i>
-        </div>
+      <div className="flex-1 flex flex-col justify-center px-8 z-10">
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-gray-900 dark:text-white mb-8 leading-tight tracking-tight">
-            Master Your <br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-patriot-blue to-patriot-red dark:from-blue-400 dark:to-red-400">US Citizenship Test</span>
+        {/* Flag Icon */}
+        <div className="flex justify-center mb-8">
+           <div className="w-16 h-10 relative">
+              <i className="fas fa-flag-usa text-5xl"></i>
+           </div>
+        </div>
+
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold mb-4 leading-tight">
+            Your Path to<br/>Citizenship Starts Here
           </h1>
-          
-          <p className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-            Prepare with confidence using our adaptive AI tutor. Practice real-time voice interviews, master the 100 civics questions, and track your progress.
+          <p className="text-blue-200 text-sm max-w-xs mx-auto leading-relaxed">
+            To personalize your study guide, please tell us where you live.
           </p>
-          
-          <div className="flex flex-col sm:flex-row justify-center gap-4 w-full max-w-md mx-auto">
-            <button 
-              onClick={() => onNavigate(View.DASHBOARD)} 
-              className="flex-1 bg-patriot-red text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:bg-red-700 hover:shadow-2xl transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2"
-            >
-              Start Free Practice <i className="fas fa-arrow-right"></i>
-            </button>
-            <button 
-               onClick={() => onNavigate(View.DASHBOARD)}
-               className="flex-1 bg-white dark:bg-transparent dark:text-white text-gray-700 border-2 border-gray-200 dark:border-gray-700 px-8 py-4 rounded-xl font-bold text-lg hover:border-patriot-blue dark:hover:border-white hover:text-patriot-blue transition-all flex items-center justify-center gap-2"
-            >
-               <i className="fas fa-play-circle"></i> Try Demo
-            </button>
+        </div>
+
+        <div className="space-y-4 mb-8">
+          <div>
+            <input 
+              type="text" 
+              placeholder="State" 
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              className="w-full bg-white text-gray-900 placeholder-gray-400 px-6 py-4 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all font-medium"
+            />
           </div>
-          
-          <p className="mt-6 text-sm text-gray-400">
-             <i className="fas fa-check-circle text-green-500 mr-1"></i> Updated for 2008 Civics Test
-             <span className="mx-3">•</span>
-             <i className="fas fa-check-circle text-green-500 mr-1"></i> No credit card required
-          </p>
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="ZIP Code" 
+              value={zip}
+              onChange={(e) => setZip(e.target.value)}
+              className="w-full bg-white text-gray-900 placeholder-gray-400 px-6 py-4 rounded-xl shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-all font-medium"
+            />
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 border-2 border-gray-300 rounded-full w-5 h-5 flex items-center justify-center">
+               <div className="w-2 h-2 bg-transparent"></div> 
+            </div>
+          </div>
         </div>
-      </header>
 
-      {/* Feature Grid */}
-      <section className="bg-gray-50 dark:bg-gray-800 py-24 border-t border-gray-200 dark:border-gray-700 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-           <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-patriot-blue dark:text-white mb-4">Everything You Need to Pass</h2>
-              <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">We combine official USCIS study materials with cutting-edge AI to create the most effective study companion available.</p>
+        {/* Dashboard Preview Mockup Card */}
+        <div className="bg-white rounded-2xl p-4 shadow-xl mb-8 transform scale-95 opacity-90 mx-auto w-full max-w-xs">
+           <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-gray-800">Mastery Dashboard</span>
+              <i className="fas fa-cog text-gray-300 text-xs"></i>
            </div>
-           
-           <div className="grid md:grid-cols-3 gap-8">
-              {/* Feature 1 */}
-              <div className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-lg transition-all group">
-                 <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-patriot-blue dark:text-blue-300 text-2xl mb-6 group-hover:scale-110 transition-transform">
-                    <i className="fas fa-microphone-alt"></i>
-                 </div>
-                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">AI Mock Interviews</h3>
-                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Practice talking to a virtual USCIS officer. Our AI listens to your speech and provides real-time feedback to help you ace the interview.
-                 </p>
-              </div>
-
-              {/* Feature 2 */}
-              <div className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-lg transition-all group">
-                 <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center text-patriot-red dark:text-red-300 text-2xl mb-6 group-hover:scale-110 transition-transform">
-                    <i className="fas fa-brain"></i>
-                 </div>
-                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Adaptive Quizzes</h3>
-                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Stop wasting time on questions you already know. Our system tracks your mastery and focuses on your weak spots automatically.
-                 </p>
-              </div>
-
-              {/* Feature 3 */}
-              <div className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-lg transition-all group">
-                 <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400 text-2xl mb-6 group-hover:scale-110 transition-transform">
-                    <i className="fas fa-comment-dots"></i>
-                 </div>
-                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">24/7 Civics Tutor</h3>
-                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Confused about the "Rule of Law"? Just ask. Your personal AI tutor is always available to explain complex concepts simply.
-                 </p>
-              </div>
+           <div className="space-y-2">
+              <div className="bg-gray-100 h-6 rounded w-full"></div>
+              <div className="bg-gray-100 h-6 rounded w-3/4"></div>
+           </div>
+           <div className="mt-4 bg-[#1a237e] text-white text-xs py-2 rounded-full text-center">
+              Get My Local Answers
            </div>
         </div>
-      </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-patriot-blue relative overflow-hidden">
-         <div className="absolute inset-0 opacity-10">
-            <i className="fas fa-star text-9xl absolute -top-10 -left-10 text-white"></i>
-            <i className="fas fa-star text-9xl absolute bottom-10 right-10 text-white"></i>
-         </div>
-         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Ready to become a U.S. Citizen?</h2>
-            <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto">Join thousands of applicants who are studying smarter, not harder. Start your free preparation today.</p>
-            <button 
-               onClick={() => onNavigate(View.LOGIN)}
-               className="bg-white text-patriot-blue px-10 py-4 rounded-full font-bold text-lg shadow-2xl hover:bg-blue-50 transition-all transform hover:scale-105"
-            >
-               Create Free Account
-            </button>
-         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12 border-t border-gray-800">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                   <i className="fas fa-star text-gray-600"></i>
-                   <span className="font-bold text-gray-300">CivicPath Pro</span>
-                </div>
-                <p className="text-xs text-gray-500">&copy; 2025 CivicPath Pro. Not affiliated with USCIS.</p>
-            </div>
-            <div className="flex gap-6 text-sm">
-               <button onClick={() => onNavigate(View.FAQ)} className="hover:text-white transition">FAQ</button>
-               <button onClick={() => onNavigate(View.TERMS)} className="hover:text-white transition">Terms</button>
-               <button onClick={() => onNavigate(View.PRIVACY)} className="hover:text-white transition">Privacy</button>
-               <button onClick={() => onNavigate(View.SUPPORT)} className="hover:text-white transition">Contact</button>
-            </div>
-         </div>
-      </footer>
+        <button 
+          onClick={handleStart}
+          className="w-full bg-[#1a237e] border border-white/30 hover:bg-blue-900 text-white font-bold py-4 rounded-full shadow-[0_4px_14px_0_rgba(0,0,0,0.39)] hover:shadow-2xl transition-all mb-4"
+        >
+          Get My Local Answers
+        </button>
+      </div>
     </div>
   );
 };

@@ -6,9 +6,10 @@ import { getAIInstance } from '../services/geminiService';
 interface LiveInterviewProps {
   isPremium: boolean;
   onUpgrade: () => void;
+  onExit: () => void;
 }
 
-// Audio helpers
+// Audio helpers... (Keeping existing helpers)
 function createBlob(data: Float32Array): { data: string; mimeType: string } {
   const l = data.length;
   const int16 = new Int16Array(l);
@@ -37,45 +38,35 @@ function decode(base64: string) {
   return bytes;
 }
 
-// Robust Audio Decoding for PCM 16-bit (Fixed for Android/Safari)
 async function decodeAudioData(
   data: Uint8Array,
   ctx: AudioContext,
   sampleRate: number,
   numChannels: number,
 ): Promise<AudioBuffer> {
-  // Ensure even byte length for Int16 and byte alignment
   if (data.length % 2 !== 0) {
     const newData = new Uint8Array(data.length + 1);
     newData.set(data);
     data = newData;
   }
-
-  // Create a copy of the buffer to ensure byte offset alignment
-  // Int16Array(buffer, offset) requires offset to be a multiple of 2.
   const bufferCopy = data.slice().buffer;
   const dataInt16 = new Int16Array(bufferCopy);
-  
   const frameCount = dataInt16.length / numChannels;
   const audioBuffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
   for (let channel = 0; channel < numChannels; channel++) {
     const channelData = audioBuffer.getChannelData(channel);
     for (let i = 0; i < frameCount; i++) {
-      // Normalize 16-bit integer to float [-1, 1]
       channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
     }
   }
   return audioBuffer;
 }
 
-const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) => {
+const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade, onExit }) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [status, setStatus] = useState('Ready to start');
-  const [volumeLevel, setVolumeLevel] = useState(0);
-  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [status, setStatus] = useState('Tap mic to start');
+  const [transcript, setTranscript] = useState("Here your ear a meider e or blats inee served anw mer as enaseciooo is like Commuict Parry!");
   
-  // Refs for audio context and session management
   const aiRef = useRef(getAIInstance());
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -87,13 +78,10 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
   const inputSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
   const stopInterview = useCallback(() => {
-    // Stop user media stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-
-    // Close audio contexts
     if (inputAudioContextRef.current) {
       inputAudioContextRef.current.close();
       inputAudioContextRef.current = null;
@@ -102,77 +90,47 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
       outputAudioContextRef.current.close();
       outputAudioContextRef.current = null;
     }
-
-    // Disconnect session
     if (sessionPromiseRef.current) {
       sessionPromiseRef.current.then(session => session.close());
       sessionPromiseRef.current = null;
     }
-
-    // Clear sources
     sourcesRef.current.forEach(source => source.stop());
     sourcesRef.current.clear();
-
     setIsConnected(false);
-    setStatus('Interview ended.');
-    setVolumeLevel(0);
+    setStatus('Tap mic to restart');
   }, []);
 
   const startInterview = async () => {
     try {
       setStatus('Connecting...');
-      
-      // Initialize Audio Contexts with user gesture
       inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      
-      // Resume contexts if suspended (common on mobile)
       if (inputAudioContextRef.current.state === 'suspended') await inputAudioContextRef.current.resume();
       if (outputAudioContextRef.current.state === 'suspended') await outputAudioContextRef.current.resume();
 
       const outputNode = outputAudioContextRef.current.createGain();
       outputNode.connect(outputAudioContextRef.current.destination);
 
-      // Get Microphone Stream
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        } 
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       streamRef.current = stream;
 
-      // Connect to Gemini Live
       sessionPromiseRef.current = aiRef.current.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
           onopen: () => {
-            setStatus('Speaking with Officer');
+            setStatus('Listening...');
             setIsConnected(true);
-
+            setTranscript("Hello! I am Officer Miller. Let's begin your interview.");
             if (!inputAudioContextRef.current || !streamRef.current) return;
-
-            // Setup Input Stream Processing
             inputSourceRef.current = inputAudioContextRef.current.createMediaStreamSource(streamRef.current);
             scriptProcessorRef.current = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
-            
             scriptProcessorRef.current.onaudioprocess = (audioProcessingEvent) => {
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
-              
-              // Simple volume visualization logic
-              let sum = 0;
-              for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
-              const rms = Math.sqrt(sum / inputData.length);
-              setVolumeLevel(Math.min(rms * 5, 1)); // Scale for visual
-
               const pcmBlob = createBlob(inputData);
-              
               sessionPromiseRef.current?.then((session) => {
                 session.sendRealtimeInput({ media: pcmBlob });
               });
             };
-
             inputSourceRef.current.connect(scriptProcessorRef.current);
             scriptProcessorRef.current.connect(inputAudioContextRef.current.destination);
           },
@@ -181,60 +139,30 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
              if (base64EncodedAudioString && outputAudioContextRef.current) {
                 const ctx = outputAudioContextRef.current;
                 nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
-                
                 try {
-                  const audioBuffer = await decodeAudioData(
-                    decode(base64EncodedAudioString),
-                    ctx,
-                    24000,
-                    1
-                  );
-
+                  const audioBuffer = await decodeAudioData(decode(base64EncodedAudioString), ctx, 24000, 1);
                   const source = ctx.createBufferSource();
                   source.buffer = audioBuffer;
                   source.connect(outputNode);
-                  source.addEventListener('ended', () => {
-                    sourcesRef.current.delete(source);
-                  });
-
+                  source.addEventListener('ended', () => { sourcesRef.current.delete(source); });
                   source.start(nextStartTimeRef.current);
                   nextStartTimeRef.current += audioBuffer.duration;
                   sourcesRef.current.add(source);
-                } catch (err) {
-                  console.error("Decoding error:", err);
-                }
+                } catch (err) { console.error("Decoding error:", err); }
              }
-
-             const interrupted = message.serverContent?.interrupted;
-             if (interrupted) {
+             if (message.serverContent?.interrupted) {
                sourcesRef.current.forEach(s => s.stop());
                sourcesRef.current.clear();
-               if(outputAudioContextRef.current) {
-                   nextStartTimeRef.current = outputAudioContextRef.current.currentTime;
-               }
+               if(outputAudioContextRef.current) nextStartTimeRef.current = outputAudioContextRef.current.currentTime;
              }
           },
-          onclose: () => {
-            setStatus('Connection closed.');
-            setIsConnected(false);
-          },
-          onerror: (e) => {
-            console.error(e);
-            setStatus('Connection error.');
-            setIsConnected(false);
-          }
+          onclose: () => { setStatus('Connection closed.'); setIsConnected(false); },
+          onerror: (e) => { console.error(e); setStatus('Error connecting.'); setIsConnected(false); }
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
-          },
-          systemInstruction: `You are a USCIS Immigration Officer conducting a naturalization interview. 
-          Start by greeting the applicant warmly and asking for their name. 
-          Then, proceed to ask 5 random civics questions from the 2008 test, one by one. 
-          Wait for their answer. Correct them politely if wrong.
-          Finally, test their English by asking them to read a simple sentence about US history.
-          Keep your tone professional but official.`,
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+          systemInstruction: `You are a USCIS Immigration Officer conducting a naturalization interview. Start by greeting the applicant warmly. Ask random civics questions. Keep it professional.`,
         },
       });
 
@@ -244,133 +172,90 @@ const LiveInterview: React.FC<LiveInterviewProps> = ({ isPremium, onUpgrade }) =
     }
   };
 
-  const confirmEndSession = () => {
-    stopInterview();
-    setShowEndConfirmation(false);
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopInterview();
-    };
-  }, [stopInterview]);
+  useEffect(() => { return () => stopInterview(); }, [stopInterview]);
 
   if (!isPremium) {
      return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] py-12 px-4 sm:px-8 bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 text-center transition-colors">
-        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-6">
-          <i className="fas fa-microphone-alt-slash text-3xl sm:text-4xl text-patriot-red" aria-hidden="true"></i>
+      <div className="flex flex-col items-center justify-center min-h-[80vh] p-8 text-center bg-[#1a237e] text-white m-0 animate-fade-in">
+        <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-6">
+          <i className="fas fa-lock text-4xl"></i>
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-3">Live Interview Locked</h2>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-8 max-w-md">
-          Practice with our real-time AI Officer to simulate the actual interview experience. 
-          This premium feature requires advanced audio processing.
-        </p>
-        <button
-          onClick={onUpgrade}
-          className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-3 rounded-full font-bold text-base sm:text-lg shadow-lg hover:scale-105 transition flex items-center justify-center gap-2"
-        >
-          <i className="fas fa-crown" aria-hidden="true"></i> Unlock Live Interview
-        </button>
+        <h2 className="text-2xl font-bold mb-4">Interview Simulator Locked</h2>
+        <p className="mb-8 opacity-80 max-w-md">Upgrade to Premium to unlock real-time voice practice with our AI Officer.</p>
+        <div className="flex gap-4">
+            <button onClick={onExit} className="bg-white/10 px-8 py-3 rounded-full font-bold hover:bg-white/20 transition">Go Back</button>
+            <button onClick={onUpgrade} className="bg-red-500 px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-600 transition">Unlock Premium</button>
+        </div>
       </div>
      );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-4xl mx-auto p-4 sm:p-8 bg-patriot-cream dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700 relative transition-colors">
-      
-      {/* End Confirmation Modal */}
-      {showEndConfirmation && (
-        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" 
-            role="dialog" 
-            aria-modal="true"
-            aria-labelledby="modal-title"
-            aria-describedby="modal-desc"
-        >
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-sm w-full p-6 transform transition-all scale-100">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-exclamation-triangle text-2xl text-red-500 dark:text-red-400" aria-hidden="true"></i>
-              </div>
-              <h3 id="modal-title" className="text-xl font-bold text-gray-900 dark:text-white mb-2">End Interview Session?</h3>
-              <p id="modal-desc" className="text-gray-600 dark:text-gray-300 text-sm">
-                Are you sure you want to end the current practice session? This will disconnect the AI officer.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowEndConfirmation(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmEndSession}
-                autoFocus
-                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
-              >
-                End Session
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="mb-6 sm:mb-10 text-center w-full">
-        <div className="w-20 h-20 sm:w-32 sm:h-32 bg-patriot-blue rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-blue-100 dark:ring-blue-900">
-          <i className={`fas fa-microphone-alt text-3xl sm:text-5xl transition-all duration-300 ${isConnected ? 'text-red-400 animate-pulse scale-110' : 'text-white'}`} aria-hidden="true"></i>
-        </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-patriot-blue dark:text-blue-300 mb-3">Mock Interview Simulator</h2>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-lg mx-auto leading-relaxed">
-          Practice with an AI Officer in real-time. Put on your headset, find a quiet place, and speak naturally.
-        </p>
+    <div className="flex flex-col min-h-screen bg-[#1a237e] text-white pb-20 animate-fade-in">
+      {/* Header */}
+      <div className="px-6 py-4 flex items-center pt-4">
+         <button onClick={onExit} className="mr-4 text-white/80 hover:text-white transition p-2" aria-label="Go Back">
+            <i className="fas fa-chevron-left"></i>
+         </button>
+         <h1 className="font-bold text-lg text-center flex-1 pr-8">Interview Simulator</h1>
       </div>
 
-      <div className="mb-8 w-full max-w-md bg-white dark:bg-gray-700 p-5 rounded-xl shadow-md border border-gray-100 dark:border-gray-600 text-center transform transition-all" aria-live="polite">
-        <p className={`font-mono text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-          <i className={`fas fa-circle text-[10px] mr-2 ${isConnected ? 'animate-pulse' : ''}`} aria-hidden="true"></i>
-          {status}
-        </p>
-        <div className="h-3 bg-gray-100 dark:bg-gray-600 rounded-full overflow-hidden w-full ring-1 ring-gray-200 dark:ring-gray-500">
-            <div 
-                className={`h-full transition-all duration-100 ${isConnected ? 'bg-gradient-to-r from-green-400 to-green-600' : 'bg-gray-300 dark:bg-gray-500'}`}
-                style={{ width: `${isConnected ? Math.max(5, volumeLevel * 100) : 0}%`}}
-                role="progressbar"
-                aria-label="Voice volume level"
-                aria-valuenow={volumeLevel * 100}
-            ></div>
-        </div>
-      </div>
+      <div className="flex-1 px-6 pb-8 flex flex-col items-center justify-start mt-4">
+         
+         {/* Avatar Card */}
+         <div className="bg-white rounded-[2rem] p-6 shadow-2xl w-full max-w-sm mb-6 flex flex-col items-center relative">
+            {/* Speech Bubble */}
+            <div className="bg-gray-100 p-4 rounded-2xl rounded-bl-none w-full text-sm text-gray-800 relative mb-4 leading-relaxed font-medium">
+               {transcript}
+            </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-        {!isConnected ? (
-          <button
-            onClick={startInterview}
-            className="w-full sm:w-auto bg-patriot-blue hover:bg-blue-900 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3"
-          >
-            <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
-                <i className="fas fa-play text-sm" aria-hidden="true"></i>
+            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-100 bg-[#fce4ec] mb-2 relative">
+               {/* Simple Vector Avatar */}
+               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" className="w-full h-full">
+                  <rect width="200" height="200" fill="#fce4ec"/>
+                  <path d="M50 60 Q100 0 150 60 L150 140 Q100 180 50 140 Z" fill="#3e2723"/> {/* Hair Back */}
+                  <circle cx="100" cy="90" r="50" fill="#f5d0b5"/> {/* Face */}
+                  <path d="M100 140 Q140 140 140 200 L60 200 Q60 140 100 140" fill="#283593"/> {/* Shirt */}
+                  <path d="M50 60 Q100 20 150 60 L150 90 L50 90 Z" fill="#3e2723"/> {/* Hair Front */}
+                  <circle cx="85" cy="90" r="4" fill="#333"/>
+                  <circle cx="115" cy="90" r="4" fill="#333"/>
+                  <path d="M90 110 Q100 115 110 110" fill="none" stroke="#c98a70" strokeWidth="3"/>
+               </svg>
             </div>
-            Start Interview
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowEndConfirmation(true)}
-            className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3"
-          >
-            <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
-                <i className="fas fa-stop text-sm" aria-hidden="true"></i>
+            <p className="text-gray-400 text-xs font-bold uppercase mt-2">Officer Miller</p>
+         </div>
+
+         {/* Visualizer / Mic Section */}
+         <div className="flex flex-col items-center justify-center gap-6 mt-2 w-full max-w-sm">
+            <div className="w-full flex items-center justify-center gap-2">
+                 <div className="w-24 h-24 rounded-full border-[3px] border-blue-400/30 flex items-center justify-center relative">
+                     <button
+                        onClick={isConnected ? stopInterview : startInterview}
+                        className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl shadow-xl transition-all transform active:scale-95 ${
+                            isConnected 
+                            ? 'bg-red-500 text-white animate-pulse' 
+                            : 'bg-[#3949ab] text-white hover:bg-[#303f9f]'
+                        }`}
+                        aria-label={isConnected ? "Stop Interview" : "Start Interview"}
+                     >
+                        <i className={`fas ${isConnected ? 'fa-stop' : 'fa-microphone'}`}></i>
+                     </button>
+                 </div>
             </div>
-             End Session
-          </button>
-        )}
-      </div>
-      
-      <div className="mt-auto pt-8 text-xs text-gray-400 flex flex-col sm:flex-row items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-         <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded-full font-bold"><i className="fas fa-bolt mr-1" aria-hidden="true"></i> AI POWERED</span>
-         <span>Voice processing by Gemini Live API</span>
+            
+            <p className="text-blue-200 font-medium text-sm animate-pulse">{status}</p>
+
+            {/* Red Feedback Box */}
+            <div className="w-full bg-[#ef5350] rounded-2xl p-5 mt-2 shadow-lg text-white">
+                 <h3 className="font-bold text-sm mb-1 flex items-center">
+                    <i className="fas fa-exclamation-circle mr-2"></i>
+                    Tip: Speak clearly
+                 </h3>
+                 <p className="text-xs text-white/90 leading-relaxed pl-6">
+                    Wait for Officer Miller to finish speaking before answering. Keep answers concise.
+                 </p>
+            </div>
+         </div>
       </div>
     </div>
   );

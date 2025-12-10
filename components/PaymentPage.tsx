@@ -1,331 +1,145 @@
 
-import React, { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
-// Initialize Stripe with a test publishable key
-// In a real application, this should be an environment variable
-const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+import React, { useEffect } from 'react';
+import { UserProfile } from '../types';
 
 interface PaymentPageProps {
+  user: UserProfile | null;
   onComplete: () => void;
   onCancel: () => void;
 }
 
-type PlanType = 'biweekly' | 'monthly';
-
-const CARD_ELEMENT_OPTIONS = {
-  style: {
-    base: {
-      color: "#1f2937", // gray-800
-      fontFamily: '"Inter", sans-serif',
-      fontSmoothing: "antialiased",
-      fontSize: "16px",
-      "::placeholder": {
-        color: "#9ca3af" // gray-400
-      }
-    },
-    invalid: {
-      color: "#ef4444", // red-500
-      iconColor: "#ef4444"
+const PaymentPage: React.FC<PaymentPageProps> = ({ user, onComplete, onCancel }) => {
+  
+  useEffect(() => {
+    // Initialize Lemon Squeezy event handler
+    // Ensure the script is loaded in index.html: <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
+    const ls = (window as any).LemonSqueezy;
+    if (ls) {
+      ls.Setup({
+        eventHandler: (event: any) => {
+          // Listen for successful payment events to unlock premium
+          if (event.event === 'Payment.Success') {
+            onComplete();
+          }
+        }
+      });
     }
-  }
-};
+  }, [onComplete]);
 
-const CheckoutForm: React.FC<{
-  planName: string;
-  price: string;
-  onSuccess: () => void;
-  processing: boolean;
-  setProcessing: (val: boolean) => void;
-}> = ({ planName, price, onSuccess, processing, setProcessing }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [error, setError] = useState<string | null>(null);
-  const [cardName, setCardName] = useState('');
-  const [zip, setZip] = useState('');
+  const handleCheckout = (plan: 'biweekly' | 'monthly') => {
+    // -------------------------------------------------------------------------
+    // IMPORTANT: Replace these URLs with your actual Lemon Squeezy Checkout Links
+    // 1. Go to Lemon Squeezy Dashboard > Products
+    // 2. Click "Share" on your product/variant
+    // 3. Copy the "Checkout Link"
+    // -------------------------------------------------------------------------
+    const CHECKOUT_URLS = {
+        // Placeholder URLs - these need to be replaced with your real product links
+        biweekly: 'https://civicpath.lemonsqueezy.com/checkout/buy/e4741369-0746-4444-a957-555555555555', 
+        monthly: 'https://civicpath.lemonsqueezy.com/checkout/buy/e4741369-0746-4444-a957-666666666666'
+    };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+    const baseUrl = CHECKOUT_URLS[plan];
+    
+    // Append user data to prefill the checkout form
+    const emailParam = user?.email ? `&checkout[email]=${encodeURIComponent(user.email)}` : '';
+    const nameParam = user?.name ? `&checkout[name]=${encodeURIComponent(user.name)}` : '';
+    // Pass User ID as custom data if needed for backend webhooks
+    const customParam = user?.id ? `&checkout[custom][user_id]=${user.id}` : '';
+    
+    // Add embed=1 to trigger the overlay mode instead of a redirect
+    const checkoutUrl = `${baseUrl}?embed=1${emailParam}${nameParam}${customParam}`;
 
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setProcessing(true);
-    setError(null);
-
-    const cardElement = elements.getElement(CardElement);
-
-    if (!cardElement) {
-      setProcessing(false);
-      return;
-    }
-
-    // In a real backend integration, you would create a PaymentIntent on the server
-    // and use stripe.confirmCardPayment here. 
-    // For this frontend-only demo, we create a PaymentMethod to validate the card.
-    const { error, paymentMethod } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: cardElement,
-      billing_details: {
-        name: cardName,
-        address: {
-          postal_code: zip,
-        },
-      },
-    });
-
-    if (error) {
-      console.error(error);
-      setError(error.message || 'Payment failed');
-      setProcessing(false);
+    const ls = (window as any).LemonSqueezy;
+    if (ls) {
+        ls.Url.Open(checkoutUrl);
     } else {
-      console.log('[PaymentMethod]', paymentMethod);
-      // Simulate network delay for verification
-      setTimeout(() => {
-        setProcessing(false);
-        onSuccess();
-      }, 1000);
+        console.warn("Lemon Squeezy SDK not loaded or blocked. Opening in new tab.");
+        window.open(checkoutUrl, '_blank');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="cardName" className="block text-sm font-bold text-gray-700 mb-1">Name on Card</label>
-        <div className="relative">
-          <i className="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
-          <input
-            id="cardName"
-            type="text"
-            required
-            placeholder="John Doe"
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-patriot-blue focus:border-transparent transition-shadow"
-            value={cardName}
-            onChange={(e) => setCardName(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="card-element" className="block text-sm font-bold text-gray-700 mb-1">Card Details</label>
-        <div className="p-3 border border-gray-300 rounded-lg bg-white focus-within:ring-2 focus-within:ring-patriot-blue focus-within:border-transparent transition-shadow">
-          <CardElement id="card-element" options={CARD_ELEMENT_OPTIONS} />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="zip" className="block text-sm font-bold text-gray-700 mb-1">ZIP Code</label>
-        <input
-          id="zip"
-          type="text"
-          required
-          placeholder="12345"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-patriot-blue focus:border-transparent transition-shadow"
-          value={zip}
-          onChange={(e) => setZip(e.target.value)}
-        />
-      </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2" role="alert">
-          <i className="fas fa-exclamation-circle" aria-hidden="true"></i> {error}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={!stripe || processing}
-        className="w-full bg-patriot-blue hover:bg-blue-900 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.01] mt-6 flex justify-center items-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
-      >
-        {processing ? (
-          <><i className="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Processing Payment...</>
-        ) : (
-          <><i className="fas fa-lock" aria-hidden="true"></i> Pay ${price}</>
-        )}
-      </button>
-    </form>
-  );
-};
-
-const PaymentPage: React.FC<PaymentPageProps> = ({ onComplete, onCancel }) => {
-  const [step, setStep] = useState<'SELECTION' | 'CHECKOUT' | 'SUCCESS'>('SELECTION');
-  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
-  const [processing, setProcessing] = useState(false);
-
-  const handleSelectPlan = (plan: PlanType) => {
-    setSelectedPlan(plan);
-    setStep('CHECKOUT');
-  };
-
-  const getPrice = () => selectedPlan === 'biweekly' ? '5.99' : '9.99';
-  const getPlanName = () => selectedPlan === 'biweekly' ? 'Bi-Weekly Access' : 'Monthly Premium Access';
-
-  const handleSuccess = () => {
-    setStep('SUCCESS');
-    setTimeout(() => {
-      onComplete();
-    }, 2500);
-  };
-
-  // Success View
-  if (step === 'SUCCESS') {
-    return (
-      <div className="max-w-md mx-auto py-20 px-4 text-center" aria-live="polite">
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-          <i className="fas fa-check text-4xl text-green-600" aria-hidden="true"></i>
-        </div>
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">Payment Successful!</h2>
-        <p className="text-gray-600 mb-8">Welcome to CivicPath Pro Premium. Your account has been successfully upgraded.</p>
-        <div className="flex justify-center">
-          <div className="flex space-x-1">
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Checkout Form View
-  if (step === 'CHECKOUT') {
-    return (
-      <div className="max-w-2xl mx-auto py-8 px-4">
-        <button
-          onClick={() => setStep('SELECTION')}
-          className="mb-6 text-gray-500 hover:text-patriot-blue font-medium flex items-center gap-2 transition-colors"
-          aria-label="Change Plan"
-        >
-          <i className="fas fa-arrow-left" aria-hidden="true"></i> Change Plan
-        </button>
-
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-          <div className="bg-gray-50 p-6 border-b border-gray-200">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-xl font-bold text-gray-800">Secure Checkout</h2>
-              <p className="text-sm text-gray-500"><i className="fas fa-lock text-green-600 mr-1" aria-hidden="true"></i> SSL Encrypted</p>
-            </div>
-            <div className="flex justify-between items-center text-sm text-gray-600 mb-4">
-              <span>Merchant</span>
-              <span className="font-medium text-gray-800">CivicPath Pro Inc.</span>
-            </div>
-            <div className="text-right border-t border-gray-200 pt-4">
-              <p className="text-sm text-gray-500">Total due</p>
-              <p className="text-2xl font-bold text-patriot-blue">${getPrice()}</p>
-            </div>
-          </div>
-
-          <div className="p-6 sm:p-8">
-            <div className="mb-8 bg-blue-50 p-4 rounded-lg flex items-start gap-3 border border-blue-100">
-              <div className="bg-white p-2 rounded shadow-sm text-patriot-blue">
-                <i className="fas fa-shopping-cart" aria-hidden="true"></i>
-              </div>
-              <div>
-                <h3 className="font-bold text-patriot-blue">{getPlanName()}</h3>
-                <p className="text-sm text-gray-600">Unlimited quizzes, AI Tutor, and Live Interviews.</p>
-              </div>
-            </div>
-
-            <Elements stripe={stripePromise}>
-              <CheckoutForm 
-                planName={getPlanName()} 
-                price={getPrice()} 
-                onSuccess={handleSuccess} 
-                processing={processing}
-                setProcessing={setProcessing}
-              />
-            </Elements>
-          </div>
-        </div>
-        <div className="text-center mt-6 text-gray-500 text-sm">
-          <p>Payments processed securely by Stripe.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Plan Selection View
-  return (
-    <div className="max-w-4xl mx-auto py-8 px-4 animate-fade-in">
+    <div className="max-w-5xl mx-auto py-8 px-4 animate-fade-in">
       <button
         onClick={onCancel}
-        className="mb-6 text-gray-500 hover:text-patriot-blue font-medium flex items-center gap-2 transition-colors"
+        className="mb-6 text-gray-500 dark:text-gray-400 hover:text-patriot-blue dark:hover:text-blue-300 font-medium flex items-center gap-2 transition-colors"
         aria-label="Back to Dashboard"
       >
         <i className="fas fa-arrow-left" aria-hidden="true"></i> Back to Dashboard
       </button>
 
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-patriot-blue mb-4">Unlock Your American Dream</h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+        <h1 className="text-4xl font-bold text-patriot-blue dark:text-white mb-4">Unlock Your American Dream</h1>
+        <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
           Get unlimited access to AI-powered study tools, personalized tutoring, and real-time mock interviews.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-12">
+      <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">
         {/* Bi-Weekly Plan */}
-        <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 p-8 relative transition-all hover:shadow-xl hover:border-blue-200 flex flex-col">
-          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-100 text-gray-600 px-4 py-1 rounded-full text-sm font-bold tracking-wide uppercase">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-8 relative transition-all hover:shadow-xl flex flex-col">
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-sm font-bold tracking-wide uppercase border border-gray-200 dark:border-gray-600">
             Flexible
           </div>
-          <h3 className="text-xl font-bold text-gray-500 mb-2">Bi-Weekly</h3>
+          <h3 className="text-xl font-bold text-gray-500 dark:text-gray-400 mb-2">Bi-Weekly Access</h3>
           <div className="flex items-baseline mb-6">
-            <span className="text-4xl font-bold text-patriot-blue">$5.99</span>
-            <span className="text-gray-500 ml-2">/ 2 weeks</span>
+            <span className="text-4xl font-bold text-gray-900 dark:text-white">$5.99</span>
+            <span className="text-gray-500 dark:text-gray-400 ml-2">/ 14 days</span>
           </div>
-          <ul className="space-y-3 mb-8 text-gray-600 flex-1">
-            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500" aria-hidden="true"></i> Unlimited Practice Quizzes</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500" aria-hidden="true"></i> 24/7 AI Civics Tutor</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500" aria-hidden="true"></i> Real-time Voice Interviews</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-green-500" aria-hidden="true"></i> Ad-free Experience</li>
+          <ul className="space-y-4 mb-8 text-gray-600 dark:text-gray-300 flex-1">
+            <li className="flex items-start gap-3"><i className="fas fa-check-circle text-green-500 mt-1" aria-hidden="true"></i> <span>Unlimited AI Quizzes</span></li>
+            <li className="flex items-start gap-3"><i className="fas fa-check-circle text-green-500 mt-1" aria-hidden="true"></i> <span>Basic Writing Practice</span></li>
+            <li className="flex items-start gap-3"><i className="fas fa-check-circle text-green-500 mt-1" aria-hidden="true"></i> <span>Reading Test Module</span></li>
           </ul>
           <button
-            onClick={() => handleSelectPlan('biweekly')}
-            className="w-full bg-white border-2 border-patriot-blue text-patriot-blue font-bold py-3 rounded-xl hover:bg-blue-50 transition-colors"
-            aria-label="Choose Bi-Weekly Plan for $5.99 per 2 weeks"
+            onClick={() => handleCheckout('biweekly')}
+            className="w-full bg-white dark:bg-transparent border-2 border-patriot-blue dark:border-blue-400 text-patriot-blue dark:text-blue-400 font-bold py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
           >
-            Choose Bi-Weekly
+            Subscribe Bi-Weekly
           </button>
         </div>
 
         {/* Monthly Plan */}
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-patriot-red p-8 relative transition-all transform hover:-translate-y-1 hover:shadow-2xl flex flex-col">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-patriot-red dark:border-red-500 p-8 relative transition-all transform hover:-translate-y-1 hover:shadow-2xl flex flex-col">
           <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-patriot-red text-white px-4 py-1 rounded-full text-sm font-bold tracking-wide uppercase shadow-md">
-            Best Value
+            Most Popular
           </div>
-          <h3 className="text-xl font-bold text-patriot-red mb-2">Monthly</h3>
+          <h3 className="text-xl font-bold text-patriot-red dark:text-red-400 mb-2">Monthly Premium</h3>
           <div className="flex items-baseline mb-6">
-            <span className="text-5xl font-bold text-gray-900">$9.99</span>
-            <span className="text-gray-500 ml-2">/ month</span>
+            <span className="text-5xl font-bold text-gray-900 dark:text-white">$9.99</span>
+            <span className="text-gray-500 dark:text-gray-400 ml-2">/ month</span>
           </div>
-          <p className="text-sm text-green-600 font-bold mb-4 bg-green-50 inline-block px-2 py-1 rounded self-start">
-            Save 17% compared to bi-weekly
+          <p className="text-sm text-green-700 dark:text-green-300 font-bold mb-4 bg-green-100 dark:bg-green-900/30 inline-block px-3 py-1 rounded-lg self-start">
+            Save 17% vs Bi-Weekly
           </p>
-          <ul className="space-y-3 mb-8 text-gray-600 flex-1">
-            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red" aria-hidden="true"></i> <strong>All Premium Features</strong></li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red" aria-hidden="true"></i> Priority Support</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red" aria-hidden="true"></i> Progress Tracking Analytics</li>
-            <li className="flex items-center gap-3"><i className="fas fa-check text-patriot-red" aria-hidden="true"></i> Cancel Anytime</li>
+          <ul className="space-y-4 mb-8 text-gray-600 dark:text-gray-300 flex-1">
+            <li className="flex items-start gap-3"><i className="fas fa-star text-patriot-red dark:text-red-400 mt-1" aria-hidden="true"></i> <strong>Everything in Bi-Weekly</strong></li>
+            <li className="flex items-start gap-3"><i className="fas fa-check-circle text-patriot-red dark:text-red-400 mt-1" aria-hidden="true"></i> <span><strong>Live Mock Interviews</strong> (Voice AI)</span></li>
+            <li className="flex items-start gap-3"><i className="fas fa-check-circle text-patriot-red dark:text-red-400 mt-1" aria-hidden="true"></i> <span>24/7 Personal Civics Tutor</span></li>
+            <li className="flex items-start gap-3"><i className="fas fa-check-circle text-patriot-red dark:text-red-400 mt-1" aria-hidden="true"></i> <span>Ad-Free Experience</span></li>
           </ul>
           <button
-            onClick={() => handleSelectPlan('monthly')}
-            className="w-full bg-gradient-to-r from-patriot-red to-red-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
-            aria-label="Start Monthly Plan for $9.99 per month"
+            onClick={() => handleCheckout('monthly')}
+            className="w-full bg-gradient-to-r from-patriot-red to-red-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
           >
-            Start Monthly Plan
+            Start Monthly Plan <i className="fas fa-arrow-right"></i>
           </button>
         </div>
       </div>
 
-      <div className="text-center text-gray-400 text-sm space-y-2">
-        <p><i className="fas fa-lock" aria-hidden="true"></i> Secure payment processing encrypted with SSL.</p>
-        <div className="flex justify-center gap-4 opacity-60" aria-hidden="true">
-          <i className="fab fa-cc-visa fa-2x"></i>
-          <i className="fab fa-cc-mastercard fa-2x"></i>
-          <i className="fab fa-cc-amex fa-2x"></i>
-          <i className="fab fa-stripe fa-2x"></i>
+      <div className="flex flex-col items-center justify-center gap-4 text-gray-400 dark:text-gray-500 text-sm mt-8 border-t border-gray-100 dark:border-gray-800 pt-8">
+        <div className="flex items-center gap-2 opacity-75">
+            <span className="uppercase tracking-widest text-xs font-bold">Powered by</span>
+            {/* Lemon Squeezy Logo or Text */}
+            <span className="font-bold text-gray-600 dark:text-gray-400">Lemon Squeezy</span>
+        </div>
+        <p><i className="fas fa-lock" aria-hidden="true"></i> Payments are secure and encrypted. Tax handling by Lemon Squeezy.</p>
+        <div className="flex gap-3 opacity-60">
+           <i className="fab fa-cc-visa fa-lg"></i>
+           <i className="fab fa-cc-mastercard fa-lg"></i>
+           <i className="fab fa-apple-pay fa-lg"></i>
+           <i className="fab fa-google-pay fa-lg"></i>
         </div>
       </div>
     </div>

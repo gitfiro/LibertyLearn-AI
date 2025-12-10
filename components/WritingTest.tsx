@@ -145,7 +145,8 @@ const WritingTest: React.FC<WritingTestProps> = ({ isPremium, onUpgrade }) => {
         </p>
         <button
           onClick={onUpgrade}
-          className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-3 rounded-full font-bold text-base sm:text-lg shadow-lg hover:scale-105 transition flex items-center justify-center gap-2"
+          aria-label="Unlock Writing Test Premium Feature"
+          className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-3 rounded-full font-bold text-base sm:text-lg shadow-lg hover:scale-105 transition flex items-center justify-center gap-2 focus:outline-none focus:ring-4 focus:ring-yellow-300 dark:focus:ring-yellow-800"
         >
           <i className="fas fa-crown" aria-hidden="true"></i> Unlock Writing Test
         </button>
@@ -158,16 +159,20 @@ const WritingTest: React.FC<WritingTestProps> = ({ isPremium, onUpgrade }) => {
        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
           <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-8 text-white relative">
              <div className="relative z-10">
-                <h2 className="text-3xl font-bold mb-2"><i className="fas fa-pen-alt mr-2" aria-hidden="true"></i> Writing Test</h2>
-                <p className="text-teal-100">Listen to the sentence and type exactly what you hear.</p>
+                <h1 className="text-3xl font-bold mb-2" id="writing-test-title"><i className="fas fa-pen-alt mr-2" aria-hidden="true"></i> Writing Test</h1>
+                <p className="text-teal-100" id="writing-test-desc">Listen to the sentence and type exactly what you hear.</p>
              </div>
              <i className="fas fa-headphones-alt absolute -bottom-4 -right-4 text-8xl opacity-10" aria-hidden="true"></i>
           </div>
 
-          <div className="p-8 flex flex-col items-center justify-center min-h-[400px]" aria-live="polite">
+          <div 
+            className="p-8 flex flex-col items-center justify-center min-h-[400px]" 
+            aria-labelledby="writing-test-title"
+            aria-describedby="writing-test-desc"
+          >
              {isLoading ? (
-                <div className="flex flex-col items-center gap-3">
-                   <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
+                   <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" aria-hidden="true"></div>
                    <p className="text-gray-500 dark:text-gray-400">Preparing audio exercise...</p>
                 </div>
              ) : (
@@ -177,8 +182,9 @@ const WritingTest: React.FC<WritingTestProps> = ({ isPremium, onUpgrade }) => {
                       <button
                          onClick={playAudio}
                          disabled={isPlaying}
-                         aria-label={isPlaying ? "Playing audio" : "Play sentence audio"}
-                         className={`w-24 h-24 rounded-full flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105 ${
+                         aria-label={isPlaying ? "Audio is playing" : "Play sentence audio"}
+                         aria-pressed={isPlaying}
+                         className={`w-24 h-24 rounded-full flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-teal-300 dark:focus:ring-teal-800 ${
                             isPlaying 
                             ? 'bg-teal-100 text-teal-600 border-4 border-teal-200' 
                             : 'bg-teal-600 text-white hover:bg-teal-700 border-4 border-teal-200/30'
@@ -191,12 +197,15 @@ const WritingTest: React.FC<WritingTestProps> = ({ isPremium, onUpgrade }) => {
 
                    {/* Input Area */}
                    <div className="mb-6 relative">
+                      <label htmlFor="user-input" className="sr-only">Type the sentence you heard</label>
                       <textarea
+                         id="user-input"
                          value={userInput}
                          onChange={(e) => setUserInput(e.target.value)}
                          disabled={isSubmitted}
                          placeholder="Type the sentence here..."
-                         aria-label="Type the sentence you heard"
+                         aria-invalid={isSubmitted && !isCorrect}
+                         aria-describedby={isSubmitted ? "feedback-result" : undefined}
                          className={`w-full p-4 text-lg rounded-xl border-2 focus:ring-2 focus:ring-teal-500 outline-none min-h-[120px] resize-none transition-colors ${
                             isSubmitted
                              ? isCorrect 
@@ -213,21 +222,25 @@ const WritingTest: React.FC<WritingTestProps> = ({ isPremium, onUpgrade }) => {
                    </div>
 
                    {/* Feedback / Result */}
-                   {isSubmitted && (
-                      <div className="mb-8 animate-fade-in">
-                         {!isCorrect && (
-                            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Correct Sentence:</p>
-                               <p className="text-lg font-medium text-gray-800 dark:text-gray-200">{targetSentence}</p>
-                            </div>
-                         )}
-                         {isCorrect && (
-                            <p className="text-center text-green-600 dark:text-green-400 font-bold text-lg">
-                               Perfect! You got it right.
-                            </p>
-                         )}
-                      </div>
-                   )}
+                   <div id="feedback-result" aria-live="polite" className="mb-8 min-h-[2rem]">
+                     {isSubmitted && (
+                        <div className="animate-fade-in">
+                           {!isCorrect && (
+                              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg" role="alert">
+                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Correct Sentence:</p>
+                                 <p className="text-lg font-medium text-gray-800 dark:text-gray-200">{targetSentence}</p>
+                              </div>
+                           )}
+                           {isCorrect && (
+                              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-center" role="status">
+                                <p className="text-green-600 dark:text-green-400 font-bold text-lg">
+                                   Perfect! You got it right.
+                                </p>
+                              </div>
+                           )}
+                        </div>
+                     )}
+                   </div>
 
                    {/* Actions */}
                    <div className="flex justify-center gap-4">
@@ -235,14 +248,15 @@ const WritingTest: React.FC<WritingTestProps> = ({ isPremium, onUpgrade }) => {
                          <button
                            onClick={checkAnswer}
                            disabled={!userInput.trim()}
-                           className="w-full py-3 rounded-xl bg-teal-600 text-white font-bold text-lg shadow hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                           aria-disabled={!userInput.trim()}
+                           className="w-full py-3 rounded-xl bg-teal-600 text-white font-bold text-lg shadow hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-teal-300 dark:focus:ring-teal-800"
                          >
                            Check Answer
                          </button>
                       ) : (
                          <button
                            onClick={loadNewExercise}
-                           className="w-full py-3 rounded-xl bg-gray-800 dark:bg-gray-700 text-white font-bold text-lg shadow hover:bg-gray-900 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2"
+                           className="w-full py-3 rounded-xl bg-gray-800 dark:bg-gray-700 text-white font-bold text-lg shadow hover:bg-gray-900 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
                          >
                            Next Exercise <i className="fas fa-arrow-right" aria-hidden="true"></i>
                          </button>

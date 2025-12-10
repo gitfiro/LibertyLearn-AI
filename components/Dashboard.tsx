@@ -1,397 +1,118 @@
 
 import React from 'react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { UserStats, UserProfile, QuizCategory } from '../types';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { UserStats, UserProfile, View } from '../types';
 
 interface DashboardProps {
   stats: UserStats;
   user: UserProfile | null;
-  onNavigate: (view: string) => void;
+  onNavigate: (view: View) => void;
   onUpgrade: () => void;
 }
 
-// Define distinct colors for each topic
-const TOPIC_COLORS: Record<string, string> = {
-  [QuizCategory.AMERICAN_GOVERNMENT]: '#B22234', // Patriot Red
-  [QuizCategory.AMERICAN_HISTORY]: '#3C3B6E',    // Patriot Blue
-  [QuizCategory.INTEGRATED_CIVICS]: '#F59E0B',   // Amber
-  [QuizCategory.CIVIC_DUTIES]: '#10B981',        // Emerald
-};
-
 const Dashboard: React.FC<DashboardProps> = ({ stats, user, onNavigate, onUpgrade }) => {
-  const [isAlertExpanded, setIsAlertExpanded] = React.useState(false);
+  const masteryPercentage = stats.totalQuestions > 0 
+    ? Math.round((stats.totalCorrect / stats.totalQuestions) * 100) 
+    : 0;
   
-  // Use fixed categories to ensure the radar chart maintains a consistent shape
-  // even if the user hasn't practiced a specific topic yet.
-  const chartTopics = [
-    QuizCategory.AMERICAN_GOVERNMENT,
-    QuizCategory.AMERICAN_HISTORY,
-    QuizCategory.INTEGRATED_CIVICS,
-    QuizCategory.CIVIC_DUTIES
+  // Normalized score out of 100 for the visual
+  const score = Math.min(100, Math.max(0, masteryPercentage));
+  const data = [
+    { name: 'Mastered', value: score },
+    { name: 'Remaining', value: 100 - score }
   ];
-  
-  // Map data with detailed performance stats for the tooltip and colors
-  const data = chartTopics.map(topic => ({
-    topic,
-    score: stats.masteryByTopic[topic] || 0,
-    details: stats.performanceByTopic?.[topic] || { correct: 0, total: 0 },
-    color: TOPIC_COLORS[topic] || '#6B7280'
-  }));
-
-  const FREE_LIMIT = 5;
-  const questionsLeft = Math.max(0, FREE_LIMIT - stats.questionsInWindow);
-  const progressPercent = Math.min(100, (stats.questionsInWindow / FREE_LIMIT) * 100);
-
-  // Custom Tooltip Component
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const item = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 z-50 min-w-[200px] animate-fade-in">
-          <h4 className="font-bold text-sm mb-3 border-b border-gray-100 dark:border-gray-700 pb-2 flex items-center gap-2">
-             <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }}></span>
-             <span className="text-gray-800 dark:text-white">{item.topic}</span>
-          </h4>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4">
-               <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">Mastery</span>
-               <div className="flex items-baseline gap-1">
-                 <span className="font-bold text-xl" style={{ color: item.color }}>{item.score}</span>
-                 <span className="text-xs text-gray-400">%</span>
-               </div>
-            </div>
-            
-            <div className="flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-               <span className="text-xs text-gray-500 dark:text-gray-400">Questions</span>
-               <span className="font-mono font-bold text-gray-700 dark:text-gray-200">
-                 {item.details.total}
-               </span>
-            </div>
-            
-             <div className="flex items-center justify-between gap-4 px-2">
-               <span className="text-xs text-gray-500 dark:text-gray-400">Correct</span>
-               <span className="font-mono font-medium text-green-600 dark:text-green-400">
-                 {item.details.correct}
-               </span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Custom Dot for Radar Chart Data Points
-  const CustomDot = (props: any) => {
-    const { cx, cy, payload } = props;
-    return (
-      <circle 
-        cx={cx} 
-        cy={cy} 
-        r={4} 
-        stroke={payload.color} 
-        strokeWidth={2} 
-        fill={payload.color} 
-        fillOpacity={1}
-      />
-    );
-  };
-
-  // Custom Tick for Radar Axis Labels with text wrapping support
-  const CustomTick = ({ payload, x, y, textAnchor, stroke, radius }: any) => {
-    const color = TOPIC_COLORS[payload.value] || '#6B7280';
-    const words = payload.value.split(' ');
-    
-    return (
-      <g className="recharts-layer recharts-polar-angle-axis-tick">
-        <text
-          radius={radius}
-          stroke={stroke}
-          x={x}
-          y={y}
-          className="recharts-text recharts-polar-angle-axis-tick-value"
-          textAnchor={textAnchor}
-          fill={color}
-          fontSize="11"
-          fontWeight="700"
-        >
-          {words.map((word: string, i: number) => (
-             <tspan x={x} dy={i === 0 ? "0.35em" : "1.2em"} key={i}>
-                {word}
-             </tspan>
-          ))}
-        </text>
-      </g>
-    );
-  };
+  const COLORS = ['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.2)'];
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-fade-in">
-       {/* Hero Section */}
-       <div className="bg-gradient-to-r from-patriot-blue to-blue-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-2">
-               <h1 className="text-2xl sm:text-3xl font-bold">
-                 Welcome, {user ? user.name.split(' ')[0] : 'Future Citizen'}!
-               </h1>
-               {stats.isPremium && <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide"><i className="fas fa-crown mr-1" aria-hidden="true"></i> Premium</span>}
-            </div>
-            <p className="text-blue-100 mb-6 max-w-lg text-sm sm:text-base">Your complete preparation hub for the Naturalization Test.</p>
-          </div>
-          <div className="absolute right-0 top-0 opacity-10 text-8xl sm:text-9xl transform translate-x-10 -translate-y-10">
-             <i className="fas fa-flag-usa" aria-hidden="true"></i>
-          </div>
-       </div>
-
-       {/* USCIS Alert Section */}
-       <div className="bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 rounded-r-xl shadow-sm animate-fade-in transition-all duration-300">
-         <button 
-            onClick={() => setIsAlertExpanded(!isAlertExpanded)}
-            className="w-full flex items-start sm:items-center gap-4 p-5 text-left focus:outline-none hover:bg-orange-100/50 dark:hover:bg-orange-900/30 transition-colors rounded-r-xl group"
-            aria-expanded={isAlertExpanded}
-         >
-            <div className="flex-shrink-0 mt-1 sm:mt-0">
-               <div className="w-10 h-10 bg-orange-100 dark:bg-orange-800/50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                 <i className="fas fa-bullhorn text-orange-600 dark:text-orange-400 text-lg" aria-hidden="true"></i>
-               </div>
-            </div>
-            <div className="flex-1">
-               <div className="flex justify-between items-center">
-                   <h3 className="text-sm font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wide flex items-center gap-2">
-                     USCIS 2025 Test Alert
-                     <span className="bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200 text-[10px] px-2 py-0.5 rounded-full">New</span>
-                   </h3>
-                   <i className={`fas fa-chevron-down text-orange-400 transition-transform duration-300 ${isAlertExpanded ? 'rotate-180' : ''}`}></i>
-               </div>
-               {!isAlertExpanded && (
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    Click to read about the new 2025 test changes...
-                  </p>
-               )}
-            </div>
-         </button>
-
-         {isAlertExpanded && (
-            <div className="px-5 pb-5 pl-5 sm:pl-[4.5rem] animate-fade-in">
-               <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-3">
-                  USCIS is implementing the <strong>2025 naturalization civics test</strong> to align with Executive Order 14161. Your test version depends on your filing date:
-               </p>
-               
-               <div className="grid gap-3 sm:grid-cols-2 bg-white/60 dark:bg-black/20 p-3 rounded-lg border border-orange-100 dark:border-orange-800/30">
-                  <div className="p-2">
-                     <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">File Before Oct 20, 2025</p>
-                     <div className="flex items-center gap-2">
-                       <i className="fas fa-check-circle text-green-500"></i>
-                       <p className="font-bold text-patriot-blue dark:text-blue-300">2008 Civics Test</p>
-                     </div>
-                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 pl-6">This app prepares you for this version.</p>
-                  </div>
-                  <div className="p-2 border-t sm:border-t-0 sm:border-l border-orange-200 dark:border-orange-800/30">
-                     <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">File On/After Oct 20, 2025</p>
-                     <div className="flex items-center gap-2">
-                       <i className="fas fa-info-circle text-orange-500"></i>
-                       <p className="font-bold text-gray-800 dark:text-white">2025 Civics Test</p>
-                     </div>
-                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 pl-6">Based on 2020 test with modifications.</p>
-                  </div>
-               </div>
-            </div>
-         )}
-       </div>
-
-       {/* Practice Center Grid */}
-       <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-             <i className="fas fa-layer-group text-patriot-red" aria-hidden="true"></i> Practice Center
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-             {/* 1. Civics Quiz */}
-             <button 
-               onClick={() => onNavigate('QUIZ')}
-               className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-patriot-blue dark:hover:border-blue-400 transition-all text-left group active:scale-[0.98]"
-             >
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-patriot-blue dark:text-blue-300 text-xl mb-4 group-hover:scale-110 transition-transform">
-                   <i className="fas fa-question" aria-hidden="true"></i>
-                </div>
-                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Civics Quiz</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Master the 100 official questions.</p>
-             </button>
-
-             {/* 2. Reading Test */}
-             <button 
-               onClick={() => onNavigate('READING')}
-               className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-indigo-500 dark:hover:border-indigo-400'}`}
-             >
-                {!stats.isPremium && (
-                   <div className="absolute top-3 right-3 bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] px-2 py-1 rounded font-bold uppercase">
-                      <i className="fas fa-lock" aria-label="Locked feature"></i> Locked
-                   </div>
-                )}
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-300 text-xl mb-4 group-hover:scale-110 transition-transform">
-                   <i className="fas fa-book-reader" aria-hidden="true"></i>
-                </div>
-                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Reading Test</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Practice reading aloud.</p>
-             </button>
-
-             {/* 3. Live Interview */}
-             <button 
-               onClick={() => onNavigate('LIVE_INTERVIEW')}
-               className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-patriot-red dark:hover:border-red-400'}`}
-             >
-                {!stats.isPremium && (
-                   <div className="absolute top-3 right-3 bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] px-2 py-1 rounded font-bold uppercase">
-                      <i className="fas fa-lock" aria-label="Locked feature"></i> Locked
-                   </div>
-                )}
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center text-patriot-red dark:text-red-300 text-xl mb-4 group-hover:scale-110 transition-transform">
-                   <i className="fas fa-microphone-alt" aria-hidden="true"></i>
-                </div>
-                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Mock Interview</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">AI Voice Simulation.</p>
-             </button>
-             
-             {/* 4. Writing Test */}
-             <button 
-               onClick={() => onNavigate('WRITING')}
-               className={`bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all text-left group relative overflow-hidden active:scale-[0.98] ${!stats.isPremium ? 'opacity-75' : 'hover:shadow-md hover:border-teal-500 dark:hover:border-teal-400'}`}
-             >
-                {!stats.isPremium && (
-                   <div className="absolute top-3 right-3 bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] px-2 py-1 rounded font-bold uppercase">
-                      <i className="fas fa-lock" aria-label="Locked feature"></i> Locked
-                   </div>
-                )}
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center text-teal-600 dark:text-teal-400 text-xl mb-4 group-hover:scale-110 transition-transform">
-                   <i className="fas fa-pen-alt" aria-hidden="true"></i>
-                </div>
-                <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-1">Writing Test</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Dictation practice.</p>
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 animate-fade-in">
+       {/* Header Section with Circular Progress */}
+       <div className="bg-[#1a237e] pt-6 pb-12 px-6 rounded-b-[3rem] shadow-2xl relative overflow-hidden z-10">
+          <div className="flex justify-between items-center mb-4 text-white">
+             <div className="w-8"></div> {/* Spacer for alignment */}
+             <h1 className="font-semibold text-lg">Mastery Dashboard</h1>
+             <button className="opacity-80 hover:opacity-100" onClick={() => onNavigate(View.QUIZ)} aria-label="Start Quiz">
+                <i className="fas fa-play"></i>
              </button>
           </div>
-       </div>
 
-       {/* Stats & Charts Section */}
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-           {/* Left Col: Stats */}
-           <div className="lg:col-span-1 space-y-6">
-               {/* Free Plan Tracker */}
-               {!stats.isPremium && (
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border-l-4 border-yellow-400 transition-colors">
-                      <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex justify-between">
-                          <span>Daily Free Questions</span>
-                          <span className="text-yellow-600">{stats.questionsInWindow}/{FREE_LIMIT}</span>
-                      </h3>
-                      <div 
-                        className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4"
-                        role="progressbar"
-                        aria-valuenow={progressPercent}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-label="Daily free question limit progress"
+          <div className="flex flex-col items-center justify-center py-4">
+             <div className="w-56 h-56 relative">
+                {/* Background Circle */}
+                <div className="absolute inset-0 rounded-full border-[12px] border-white/10"></div>
+                
+                <ResponsiveContainer width="100%" height="100%">
+                   <PieChart>
+                      <Pie
+                         data={data}
+                         cx="50%"
+                         cy="50%"
+                         innerRadius={80}
+                         outerRadius={94}
+                         startAngle={90}
+                         endAngle={-270}
+                         dataKey="value"
+                         stroke="none"
+                         cornerRadius={10}
                       >
-                        <div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${progressPercent}%` }}></div>
-                      </div>
-                      <button onClick={onUpgrade} className="w-full py-3 rounded-lg bg-gray-900 dark:bg-black text-white text-xs font-bold active:opacity-90 hover:bg-gray-800 transition-colors">
-                          Unlock Unlimited Access
-                      </button>
-                  </div>
-               )}
-
-               <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors">
-                   <h3 className="text-gray-500 dark:text-gray-400 font-medium mb-4">Overview</h3>
-                   <div className="grid grid-cols-2 gap-4 text-center">
-                       <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                           <p className="text-3xl font-bold text-patriot-blue dark:text-blue-300">{stats.quizzesTaken}</p>
-                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-1">Quizzes</p>
-                       </div>
-                       <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                           <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                              {stats.totalQuestions > 0 ? Math.round((stats.totalCorrect / stats.totalQuestions) * 100) : 0}%
-                           </p>
-                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-1">Accuracy</p>
-                       </div>
+                         {data.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                         ))}
+                      </Pie>
+                   </PieChart>
+                </ResponsiveContainer>
+                
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                   <span className="text-5xl font-bold">{score}<span className="text-3xl text-white/60">/100</span></span>
+                   <span className="text-xs text-blue-200 mt-1 uppercase tracking-wide">Questions Mastered</span>
+                   <div className="mt-2">
+                      <i className="fas fa-chart-line opacity-80"></i>
                    </div>
-               </div>
-           </div>
+                </div>
+             </div>
+          </div>
+       </div>
 
-           {/* Right Col: Radar Chart */}
-           <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-100 dark:border-gray-700 transition-colors flex flex-col min-h-[400px]">
-               <div className="flex items-center justify-between mb-6">
-                 <h3 className="font-bold text-gray-800 dark:text-white text-lg flex items-center gap-2">
-                    <i className="fas fa-crosshairs text-patriot-red dark:text-red-400"></i>
-                    Topic Mastery
-                 </h3>
-                 {stats.totalQuestions > 0 && (
-                    <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded-full font-medium">
-                       Live Data
-                    </span>
-                 )}
-               </div>
-               
-               <div className="flex-1 relative w-full h-full">
-                   {/* Screen Reader Only Table for Chart Data */}
-                   <table className="sr-only">
-                      <caption>Topic Mastery breakdown by percentage</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">Topic</th>
-                          <th scope="col">Mastery Percentage</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.map((item) => (
-                          <tr key={item.topic}>
-                            <td>{item.topic}</td>
-                            <td>{item.score}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                   </table>
+       {/* Learning Path Section */}
+       <div className="px-6 relative z-20 -mt-8">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-6 mb-6 transition-colors">
+             <h2 className="text-gray-800 dark:text-white font-bold mb-6 text-center text-lg">Your Personalized Learning Path</h2>
+             
+             <div className="grid grid-cols-3 gap-4">
+                <button 
+                  onClick={() => onNavigate(View.FLASHCARDS)}
+                  className="bg-[#3b82f6] hover:bg-blue-600 text-white rounded-2xl p-3 py-6 flex flex-col items-center justify-center gap-3 aspect-[3/4] shadow-lg transition-transform active:scale-95 group"
+                >
+                   <i className="fas fa-star text-3xl group-hover:scale-110 transition-transform"></i>
+                   <span className="text-[10px] font-bold leading-tight text-center">Review Your<br/>Questions</span>
+                </button>
 
-                   <ResponsiveContainer width="100%" height={320}>
-                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
-                      <PolarGrid 
-                        gridType="polygon" 
-                        stroke="#e5e7eb" 
-                        strokeDasharray="4 4" 
-                        className="dark:stroke-gray-700"
-                      />
-                      <PolarAngleAxis 
-                        dataKey="topic" 
-                        tick={<CustomTick />}
-                      />
-                      <PolarRadiusAxis 
-                        angle={30} 
-                        domain={[0, 100]} 
-                        tick={false} 
-                        axisLine={false} 
-                      />
-                      <Radar
-                        name="Mastery"
-                        dataKey="score"
-                        stroke="#B22234"
-                        strokeWidth={2}
-                        fill="#B22234"
-                        fillOpacity={0.4}
-                        isAnimationActive={true}
-                        dot={<CustomDot />}
-                      />
-                      <Tooltip content={<CustomTooltip />} cursor={false} />
-                    </RadarChart>
-                 </ResponsiveContainer>
-                 
-                 {stats.totalQuestions === 0 && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-[2px] rounded-xl text-center p-6 z-10">
-                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3 text-gray-400">
-                           <i className="fas fa-chart-pie text-xl" aria-hidden="true"></i>
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-300 font-bold">No Data Available</p>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Complete quizzes to see your knowledge breakdown.</p>
-                        <button onClick={() => onNavigate('QUIZ')} className="mt-4 text-patriot-blue font-bold text-sm hover:underline">Start a Quiz</button>
-                    </div>
-                 )}
-               </div>
-           </div>
+                <button 
+                  onClick={() => onNavigate(View.QUIZ)}
+                  className="bg-[#ef4444] hover:bg-red-600 text-white rounded-2xl p-3 py-6 flex flex-col items-center justify-center gap-3 aspect-[3/4] shadow-lg transition-transform active:scale-95 group"
+                >
+                   <i className="fas fa-sync-alt text-3xl group-hover:rotate-180 transition-transform duration-500"></i>
+                   <span className="text-[10px] font-bold leading-tight text-center">Practice Your<br/>Weaknesses</span>
+                </button>
+
+                <button 
+                   onClick={() => onNavigate(View.QUIZ)}
+                   className="bg-[#f59e0b] hover:bg-yellow-600 text-white rounded-2xl p-3 py-6 flex flex-col items-center justify-center gap-3 aspect-[3/4] shadow-lg transition-transform active:scale-95 group"
+                >
+                   <i className="fas fa-check-circle text-3xl group-hover:scale-110 transition-transform"></i>
+                   <span className="text-[10px] font-bold leading-tight text-center">Daily Civics<br/>Quiz</span>
+                </button>
+             </div>
+          </div>
+       </div>
+       
+       {/* Bottom Actions */}
+       <div className="px-6 flex gap-4 mt-2 pb-8">
+          <button onClick={() => onNavigate(View.NEWS)} className="flex-1 bg-white dark:bg-gray-800 py-4 px-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center gap-2 text-[#1a237e] dark:text-blue-300 font-bold text-sm hover:shadow-md transition-shadow">
+             <i className="fas fa-newspaper"></i> Latest News
+          </button>
+          <button onClick={() => onNavigate(View.FIND_ATTORNEY)} className="flex-1 bg-white dark:bg-gray-800 py-4 px-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 font-bold text-sm hover:shadow-md transition-shadow hover:text-patriot-blue dark:hover:text-blue-300">
+             <i className="fas fa-gavel"></i> Find Lawyer
+          </button>
        </div>
     </div>
   );
